@@ -23,6 +23,12 @@ FROG_TAG = "🐸"
 POMODORO_TAG = "4⏱️"
 HIGH_PRIORITY = 5
 
+FOCUS_SCORES = {
+    "Focus work":     1.0,
+    "Focus thesis":   2.0,
+    "Focus homework": 1.2,
+}
+
 # Upstash Redis credentials (set in production env vars; absent = use local files)
 UPSTASH_URL   = os.environ.get("UPSTASH_REDIS_REST_URL")
 UPSTASH_TOKEN = os.environ.get("UPSTASH_REDIS_REST_TOKEN")
@@ -105,8 +111,10 @@ def task_score(task):
 def load_state(today: str) -> dict:
     s = kv_get(f"state:{today}")
     if isinstance(s, dict) and s.get("date") == today:
+        if "focuses" not in s:
+            s["focuses"] = []
         return s
-    return {"date": today, "tasks": [], "habits": []}
+    return {"date": today, "tasks": [], "habits": [], "focuses": []}
 
 
 def save_state(state: dict):
@@ -172,6 +180,32 @@ def fetch_habits(headers):
         return None, f"habit list failed {resp.status_code}: {resp.text}"
     data = resp.json()
     return data if isinstance(data, list) else [], None
+
+
+def fetch_pomodoros(headers):
+    """GET /open/v1/focus — fetch completed pomodoros for today (type=0)."""
+    today = date.today()
+    resp = requests.get(
+        f"{BASE_URL}/focus",
+        headers=headers,
+        params={
+            "from": f"{today.isoformat()}T00:00:00+0000",
+            "to":   f"{today.isoformat()}T23:59:59+0000",
+            "type": 0,
+        },
+    )
+    if not resp.ok:
+        return None, f"focus failed {resp.status_code}: {resp.text}"
+    data = resp.json()
+    return data if isinstance(data, list) else [], None
+
+
+def focus_name(focus: dict) -> str:
+    """Extract the timer name from a focus record."""
+    tasks = focus.get("tasks") or []
+    if tasks and tasks[0].get("timerName"):
+        return tasks[0]["timerName"]
+    return focus.get("note") or ""
 
 
 # ---------------------------------------------------------------------------
@@ -273,9 +307,30 @@ def get_score():
             })
             counted_habit_ids.add(hid)
 
+    # Pomodoros
+    pomodoros, err = fetch_pomodoros(headers)
+    if err:
+        errors.append(err)
+        pomodoros = []
+
+    counted_focus_ids = {f["id"] for f in state["focuses"]}
+    for focus in pomodoros:
+        fid = focus.get("id")
+        if not fid or fid in counted_focus_ids:
+            continue
+        name = focus_name(focus)
+        score = FOCUS_SCORES.get(name)
+        if score is None:
+            continue
+        state["focuses"].append({
+            "id": fid, "title": name,
+            "score": score, "breakdown": [], "type": "focus",
+        })
+        counted_focus_ids.add(fid)
+
     save_state(state)
 
-    all_items = state["tasks"] + state["habits"]
+    all_items = state["tasks"] + state["habits"] + state["focuses"]
     today_total = round(sum(i["score"] for i in all_items), 1)
 
     credit_points(wallet, today, today_total)
@@ -286,6 +341,7 @@ def get_score():
         "today_total": today_total,
         "task_count": len(state["tasks"]),
         "habit_count": len(state["habits"]),
+        "focus_count": len(state["focuses"]),
         "items": sorted(all_items, key=lambda i: i["score"], reverse=True),
         "balance": wallet["balance"],
         "errors": errors,

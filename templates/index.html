@@ -203,6 +203,7 @@
     .badge-frog     { background: rgba(74,222,128,0.1); border-color: rgba(74,222,128,0.3); color: var(--green); }
     .badge-pomo     { background: rgba(94,234,212,0.1); border-color: rgba(94,234,212,0.3); color: var(--accent2); }
     .badge-habit    { background: rgba(167,139,250,0.1); border-color: rgba(167,139,250,0.3); color: #a78bfa; }
+    .badge-focus    { background: rgba(251,146,60,0.1);  border-color: rgba(251,146,60,0.3);  color: #fb923c; }
 
     .task-score { font-size: 1.05rem; font-weight: 700; color: var(--accent); white-space: nowrap; flex-shrink: 0; }
 
@@ -312,6 +313,7 @@
       const parts = [];
       if (data.task_count)  parts.push(`${data.task_count} task${data.task_count  !== 1 ? "s" : ""}`);
       if (data.habit_count) parts.push(`${data.habit_count} habit${data.habit_count !== 1 ? "s" : ""}`);
+      if (data.focus_count) parts.push(`${data.focus_count} pomo${data.focus_count !== 1 ? "s" : ""}`);
       document.getElementById("task-count").textContent = parts.join(" · ") || "nothing yet";
 
       const dateStr = new Date(data.date + "T12:00:00").toLocaleDateString("en-US", {
@@ -458,6 +460,8 @@
       const badges = [];
       if (t.type === "habit") {
         badges.push(`<span class="badge badge-habit">✅ Habit</span>`);
+      } else if (t.type === "focus") {
+        badges.push(`<span class="badge badge-focus">🍅 Pomo</span>`);
       } else {
         if (t.priority === 5)              badges.push(`<span class="badge badge-priority">⚡ High</span>`);
         if ((t.tags||[]).includes("🐸"))   badges.push(`<span class="badge badge-frog">🐸 Frog</span>`);
