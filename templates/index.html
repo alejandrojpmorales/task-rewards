@@ -224,6 +224,29 @@
       pointer-events: none; white-space: nowrap; z-index: 100;
     }
     .toast.show { opacity: 1; }
+
+    /* Tabs */
+    .tab-bar {
+      display: flex; gap: 4px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 4px; margin-bottom: 20px;
+    }
+    .tab-btn {
+      flex: 1; padding: 8px; border-radius: 8px; border: none;
+      background: transparent; color: var(--muted); font-size: 0.88rem;
+      cursor: pointer; transition: background 0.15s, color 0.15s; font-weight: 500;
+    }
+    .tab-btn.active { background: var(--surface2); color: var(--text); }
+
+    /* Pending task score pill */
+    .pending-score {
+      background: rgba(124,106,247,0.12); border: 1px solid rgba(124,106,247,0.3);
+      color: var(--accent); border-radius: 8px; padding: 4px 10px;
+      font-size: 0.82rem; font-weight: 700; white-space: nowrap; flex-shrink: 0;
+    }
+    .pending-project {
+      font-size: 0.72rem; color: var(--muted); margin-top: 3px;
+    }
   </style>
 </head>
 <body>
@@ -243,6 +266,15 @@
 </header>
 
 <div id="error" class="error-msg" style="display:none"></div>
+
+<!-- Tab bar -->
+<div class="tab-bar">
+  <button class="tab-btn active" id="tab-today" onclick="switchTab('today')">⭐ Today</button>
+  <button class="tab-btn" id="tab-tasks" onclick="switchTab('tasks')">📋 Tasks</button>
+</div>
+
+<!-- TODAY TAB -->
+<div id="panel-today">
 
 <!-- Score + Balance -->
 <div class="cards-row">
@@ -282,6 +314,17 @@
   <div class="section-title">Completed today</div>
 </div>
 <div class="task-list" id="task-list"></div>
+
+</div><!-- end panel-today -->
+
+<!-- TASKS TAB -->
+<div id="panel-tasks" style="display:none">
+  <button class="refresh-btn" id="pending-btn" onclick="loadPending()">
+    <span id="pending-icon">↻</span> Refresh tasks
+  </button>
+  <div class="section-title" style="margin-bottom:10px" id="pending-count"></div>
+  <div class="task-list" id="pending-list"></div>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -489,6 +532,65 @@
     t.textContent = msg;
     t.classList.add("show");
     setTimeout(() => t.classList.remove("show"), 2200);
+  }
+
+  // ── Tabs ───────────────────────────────────────────────────────────────────
+
+  function switchTab(tab) {
+    document.getElementById("panel-today").style.display = tab === "today" ? "" : "none";
+    document.getElementById("panel-tasks").style.display = tab === "tasks" ? "" : "none";
+    document.getElementById("tab-today").classList.toggle("active", tab === "today");
+    document.getElementById("tab-tasks").classList.toggle("active", tab === "tasks");
+    if (tab === "tasks") loadPending();
+  }
+
+  // ── Pending tasks ──────────────────────────────────────────────────────────
+
+  async function loadPending() {
+    const btn = document.getElementById("pending-btn");
+    const icon = document.getElementById("pending-icon");
+    btn.disabled = true;
+    icon.classList.add("spin");
+
+    try {
+      const res = await fetch("/api/pending");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load");
+      document.getElementById("pending-count").textContent =
+        `${data.count} task${data.count !== 1 ? "s" : ""} pending`;
+      renderPending(data.tasks);
+    } catch (err) {
+      document.getElementById("pending-list").innerHTML =
+        `<div class="empty-state"><p>Error: ${escHtml(err.message)}</p></div>`;
+    } finally {
+      btn.disabled = false;
+      icon.classList.remove("spin");
+    }
+  }
+
+  function renderPending(tasks) {
+    const list = document.getElementById("pending-list");
+    if (!tasks || !tasks.length) {
+      list.innerHTML = `<div class="empty-state"><div class="emoji">✅</div><p>No pending tasks!</p></div>`;
+      return;
+    }
+    list.innerHTML = tasks.map(t => {
+      const badges = [];
+      if (t.priority === 5)              badges.push(`<span class="badge badge-priority">⚡ High</span>`);
+      if ((t.tags||[]).includes("🐸"))   badges.push(`<span class="badge badge-frog">🐸 Frog</span>`);
+      if ((t.tags||[]).includes("4⏱️")) badges.push(`<span class="badge badge-pomo">4⏱️ Pomo</span>`);
+      return `
+        <div class="task-item">
+          <div class="task-info">
+            <div class="task-title">${escHtml(t.title)}</div>
+            <div class="task-badges">
+              ${badges.join("")}
+              <span class="pending-project">${escHtml(t.project)}</span>
+            </div>
+          </div>
+          <div class="pending-score">+${t.score}</div>
+        </div>`;
+    }).join("");
   }
 
   loadRewards();

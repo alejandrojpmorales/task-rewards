@@ -209,6 +209,47 @@ def focus_name(focus: dict) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Pending tasks
+# ---------------------------------------------------------------------------
+
+def fetch_pending_tasks(headers):
+    """Return all active tasks across all projects with estimated scores."""
+    projects_resp = requests.get(f"{BASE_URL}/project", headers=headers)
+    if not projects_resp.ok:
+        return None, f"projects failed {projects_resp.status_code}"
+    projects = projects_resp.json()
+    if not isinstance(projects, list):
+        return [], None
+
+    results = []
+    for project in projects:
+        pid = project.get("id")
+        pname = project.get("name", "")
+        resp = requests.get(f"{BASE_URL}/project/{pid}/data", headers=headers)
+        if not resp.ok:
+            continue
+        data = resp.json()
+        tasks = data.get("tasks", []) if isinstance(data, dict) else []
+        for task in tasks:
+            if task.get("status", 0) != 0:
+                continue
+            score, breakdown = task_score(task)
+            results.append({
+                "id": task.get("id"),
+                "title": task.get("title", "Untitled"),
+                "project": pname,
+                "priority": task.get("priority", 0),
+                "tags": task.get("tags") or [],
+                "score": score,
+                "breakdown": breakdown,
+                "dueDate": task.get("dueDate", ""),
+            })
+
+    results.sort(key=lambda t: t["score"], reverse=True)
+    return results, None
+
+
+# ---------------------------------------------------------------------------
 # Auth routes
 # ---------------------------------------------------------------------------
 
@@ -351,6 +392,16 @@ def get_score():
 # ---------------------------------------------------------------------------
 # Wallet / Rewards
 # ---------------------------------------------------------------------------
+
+@app.route("/api/pending")
+def get_pending():
+    if "access_token" not in session:
+        return jsonify({"error": "not_authenticated"}), 401
+    tasks, err = fetch_pending_tasks(auth_headers())
+    if err:
+        return jsonify({"error": err}), 502
+    return jsonify({"tasks": tasks, "count": len(tasks)})
+
 
 @app.route("/api/redeem", methods=["POST"])
 def redeem():
