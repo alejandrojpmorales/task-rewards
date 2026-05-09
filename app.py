@@ -29,6 +29,12 @@ FOCUS_SCORES = {
     "Focus homework": 1.2,
 }
 
+DEFAULT_SCORING = {
+    "priority_high": 0.5,
+    "tag_frog":      0.8,
+    "tag_pomo":      0.8,
+}
+
 # Upstash Redis credentials (set in production env vars; absent = use local files)
 UPSTASH_URL   = os.environ.get("UPSTASH_REDIS_REST_URL")
 UPSTASH_TOKEN = os.environ.get("UPSTASH_REDIS_REST_TOKEN")
@@ -88,19 +94,23 @@ def kv_set(key: str, value):
 # Scoring
 # ---------------------------------------------------------------------------
 
-def task_score(task):
+def task_score(task, scoring=None):
+    s = scoring or DEFAULT_SCORING
     score = 1.0
     breakdown = []
     if task.get("priority") == HIGH_PRIORITY:
-        score += 0.5
-        breakdown.append("high priority +0.5")
+        b = s.get("priority_high", DEFAULT_SCORING["priority_high"])
+        score += b
+        breakdown.append(f"high priority +{b}")
     tags = task.get("tags") or []
     if FROG_TAG in tags:
-        score += 0.8
-        breakdown.append("🐸 +0.8")
+        b = s.get("tag_frog", DEFAULT_SCORING["tag_frog"])
+        score += b
+        breakdown.append(f"🐸 +{b}")
     if POMODORO_TAG in tags:
-        score += 0.8
-        breakdown.append("4⏱️ +0.8")
+        b = s.get("tag_pomo", DEFAULT_SCORING["tag_pomo"])
+        score += b
+        breakdown.append(f"4⏱️ +{b}")
     return round(score, 1), breakdown
 
 
@@ -128,8 +138,11 @@ def save_state(state: dict):
 def load_wallet() -> dict:
     w = kv_get("wallet")
     if isinstance(w, dict):
+        if "scoring" not in w:
+            w["scoring"] = DEFAULT_SCORING.copy()
         return w
-    return {"balance": 0.0, "credited_date": "", "credited_today": 0.0, "rewards": DEFAULT_REWARDS}
+    return {"balance": 0.0, "credited_date": "", "credited_today": 0.0,
+            "rewards": DEFAULT_REWARDS, "scoring": DEFAULT_SCORING.copy()}
 
 
 def save_wallet(wallet: dict):
@@ -212,7 +225,7 @@ def focus_name(focus: dict) -> str:
 # Pending tasks
 # ---------------------------------------------------------------------------
 
-def fetch_pending_tasks(headers):
+def fetch_pending_tasks(headers, scoring=None):
     """Return all active tasks across all projects with estimated scores."""
     projects_resp = requests.get(f"{BASE_URL}/project", headers=headers)
     if not projects_resp.ok:
@@ -233,7 +246,7 @@ def fetch_pending_tasks(headers):
         for task in tasks:
             if task.get("status", 0) != 0:
                 continue
-            score, breakdown = task_score(task)
+            score, breakdown = task_score(task, scoring)
             results.append({
                 "id": task.get("id"),
                 "title": task.get("title", "Untitled"),
@@ -316,12 +329,13 @@ def get_score():
         errors.append(err)
         raw_tasks = []
 
+    scoring = wallet.get("scoring", DEFAULT_SCORING)
     counted_task_ids = {t["id"] for t in state["tasks"]}
     for task in raw_tasks:
         tid = task.get("id")
         if not tid or tid in counted_task_ids:
             continue
-        score, breakdown = task_score(task)
+        score, breakdown = task_score(task, scoring)
         state["tasks"].append({
             "id": tid, "title": task.get("title", "Untitled"),
             "score": score, "breakdown": breakdown,
@@ -397,10 +411,37 @@ def get_score():
 def get_pending():
     if "access_token" not in session:
         return jsonify({"error": "not_authenticated"}), 401
-    tasks, err = fetch_pending_tasks(auth_headers())
+    wallet = load_wallet()
+    tasks, err = fetch_pending_tasks(auth_headers(), wallet.get("scoring", DEFAULT_SCORING))
     if err:
         return jsonify({"error": err}), 502
     return jsonify({"tasks": tasks, "count": len(tasks)})
+
+
+@app.route("/api/config", methods=["GET"])
+def get_config():
+    if "access_token" not in session:
+        return jsonify({"error": "not_authenticated"}), 401
+    wallet = load_wallet()
+    return jsonify({"scoring": wallet.get("scoring", DEFAULT_SCORING)})
+
+
+@app.route("/api/config", methods=["PUT"])
+def update_config():
+    if "access_token" not in session:
+        return jsonify({"error": "not_authenticated"}), 401
+    data = request.get_json() or {}
+    incoming = data.get("scoring", {})
+    clean = {}
+    for key, default in DEFAULT_SCORING.items():
+        try:
+            clean[key] = round(max(0.0, float(incoming.get(key, default))), 2)
+        except (ValueError, TypeError):
+            clean[key] = default
+    wallet = load_wallet()
+    wallet["scoring"] = clean
+    save_wallet(wallet)
+    return jsonify({"scoring": clean})
 
 
 @app.route("/api/redeem", methods=["POST"])

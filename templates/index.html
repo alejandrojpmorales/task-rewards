@@ -271,6 +271,7 @@
 <div class="tab-bar">
   <button class="tab-btn active" id="tab-today" onclick="switchTab('today')">⭐ Today</button>
   <button class="tab-btn" id="tab-tasks" onclick="switchTab('tasks')">📋 Tasks</button>
+  <button class="tab-btn" id="tab-settings" onclick="switchTab('settings')">⚙️</button>
 </div>
 
 <!-- TODAY TAB -->
@@ -324,6 +325,43 @@
   </button>
   <div class="section-title" style="margin-bottom:10px" id="pending-count"></div>
   <div class="task-list" id="pending-list"></div>
+</div>
+
+<!-- SETTINGS TAB -->
+<div id="panel-settings" style="display:none">
+  <div class="section-title" style="margin-bottom:16px">Scoring rules</div>
+
+  <div class="card" style="margin-bottom:12px">
+    <div class="card-label" style="text-align:left;margin-bottom:12px">Bonus points per tag / priority</div>
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.9rem">⚡ High priority</span>
+        <input id="cfg-priority" type="number" min="0" step="0.1"
+               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.9rem">🐸 Frog tag</span>
+        <input id="cfg-frog" type="number" min="0" step="0.1"
+               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.9rem">4⏱️ Pomo tag</span>
+        <input id="cfg-pomo" type="number" min="0" step="0.1"
+               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
+      </div>
+    </div>
+
+    <button class="btn btn-primary" onclick="saveConfig()"
+            style="width:100%;margin-top:16px;padding:11px;text-align:center">
+      Save
+    </button>
+  </div>
+
+  <div class="card" style="opacity:0.6">
+    <div class="card-label" style="text-align:left;margin-bottom:4px">Base score</div>
+    <div style="font-size:0.85rem;color:var(--muted)">Every completed task always starts at <strong style="color:var(--text)">+1.0</strong></div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -537,11 +575,39 @@
   // ── Tabs ───────────────────────────────────────────────────────────────────
 
   function switchTab(tab) {
-    document.getElementById("panel-today").style.display = tab === "today" ? "" : "none";
-    document.getElementById("panel-tasks").style.display = tab === "tasks" ? "" : "none";
-    document.getElementById("tab-today").classList.toggle("active", tab === "today");
-    document.getElementById("tab-tasks").classList.toggle("active", tab === "tasks");
-    if (tab === "tasks") loadPending();
+    ["today", "tasks", "settings"].forEach(t => {
+      document.getElementById(`panel-${t}`).style.display = t === tab ? "" : "none";
+      document.getElementById(`tab-${t}`).classList.toggle("active", t === tab);
+    });
+    if (tab === "tasks")    loadPending();
+    if (tab === "settings") loadConfig();
+  }
+
+  // ── Settings ───────────────────────────────────────────────────────────────
+
+  async function loadConfig() {
+    const res = await fetch("/api/config");
+    if (!res.ok) return;
+    const data = await res.json();
+    const s = data.scoring;
+    document.getElementById("cfg-priority").value = s.priority_high ?? 0.5;
+    document.getElementById("cfg-frog").value     = s.tag_frog      ?? 0.8;
+    document.getElementById("cfg-pomo").value     = s.tag_pomo      ?? 0.8;
+  }
+
+  async function saveConfig() {
+    const scoring = {
+      priority_high: parseFloat(document.getElementById("cfg-priority").value) || 0,
+      tag_frog:      parseFloat(document.getElementById("cfg-frog").value)     || 0,
+      tag_pomo:      parseFloat(document.getElementById("cfg-pomo").value)     || 0,
+    };
+    const res = await fetch("/api/config", {
+      method: "PUT",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({scoring}),
+    });
+    if (res.ok) showToast("Scoring rules saved!");
+    else        showToast("Failed to save");
   }
 
   // ── Pending tasks ──────────────────────────────────────────────────────────
