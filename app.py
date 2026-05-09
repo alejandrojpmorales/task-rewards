@@ -22,19 +22,59 @@ FROG_TAG = "🐸"
 POMODORO_TAG = "4⏱️"
 HIGH_PRIORITY = 5
 
-_DATA_DIR   = Path(os.environ.get("DATA_DIR", Path(__file__).parent))
-STATE_FILE  = _DATA_DIR / "state.json"
-WALLET_FILE = _DATA_DIR / "wallet.json"
+# Upstash Redis credentials (set in production env vars; absent = use local files)
+UPSTASH_URL   = os.environ.get("UPSTASH_REDIS_REST_URL")
+UPSTASH_TOKEN = os.environ.get("UPSTASH_REDIS_REST_TOKEN")
+
+_DATA_DIR = Path(os.environ.get("DATA_DIR", Path(__file__).parent))
 
 DEFAULT_REWARDS = [
-    {"id": str(uuid.uuid4()), "name": "5 mins break",            "cost": 1},
-    {"id": str(uuid.uuid4()), "name": "5 mins break + snack",    "cost": 2},
-    {"id": str(uuid.uuid4()), "name": "30 mins snack walk",      "cost": 8},
-    {"id": str(uuid.uuid4()), "name": "30 mins of Grind",        "cost": 12},
-    {"id": str(uuid.uuid4()), "name": "30 mins of Jack",         "cost": 12},
-    {"id": str(uuid.uuid4()), "name": "30 mins of TV",           "cost": 12},
-    {"id": str(uuid.uuid4()), "name": "30 mins of doomscrolling","cost": 12},
+    {"id": str(uuid.uuid4()), "name": "5 mins break",             "cost": 1},
+    {"id": str(uuid.uuid4()), "name": "5 mins break + snack",     "cost": 2},
+    {"id": str(uuid.uuid4()), "name": "30 mins snack walk",       "cost": 8},
+    {"id": str(uuid.uuid4()), "name": "30 mins of Grind",         "cost": 12},
+    {"id": str(uuid.uuid4()), "name": "30 mins of Jack",          "cost": 12},
+    {"id": str(uuid.uuid4()), "name": "30 mins of TV",            "cost": 12},
+    {"id": str(uuid.uuid4()), "name": "30 mins of doomscrolling", "cost": 12},
 ]
+
+
+# ---------------------------------------------------------------------------
+# Storage abstraction — Upstash Redis in production, JSON files locally
+# ---------------------------------------------------------------------------
+
+def kv_get(key: str):
+    if UPSTASH_URL:
+        r = requests.post(
+            UPSTASH_URL,
+            headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"},
+            json=["GET", key],
+        )
+        if r.ok:
+            result = r.json().get("result")
+            if result:
+                return json.loads(result)
+        return None
+    else:
+        path = _DATA_DIR / f"{key.replace(':', '_')}.json"
+        if path.exists():
+            try:
+                return json.loads(path.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+        return None
+
+
+def kv_set(key: str, value):
+    if UPSTASH_URL:
+        requests.post(
+            UPSTASH_URL,
+            headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"},
+            json=["SET", key, json.dumps(value, ensure_ascii=False)],
+        )
+    else:
+        path = _DATA_DIR / f"{key.replace(':', '_')}.json"
+        path.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -58,47 +98,39 @@ def task_score(task):
 
 
 # ---------------------------------------------------------------------------
-# Daily state  (resets each day)
+# Daily state
 # ---------------------------------------------------------------------------
 
 def load_state(today: str) -> dict:
-    if STATE_FILE.exists():
-        try:
-            s = json.loads(STATE_FILE.read_text(encoding="utf-8"))
-            if s.get("date") == today:
-                return s
-        except Exception:
-            pass
+    s = kv_get(f"state:{today}")
+    if isinstance(s, dict) and s.get("date") == today:
+        return s
     return {"date": today, "tasks": [], "habits": []}
 
 
 def save_state(state: dict):
-    STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+    kv_set(f"state:{state['date']}", state)
 
 
 # ---------------------------------------------------------------------------
-# Wallet  (persistent balance + rewards list)
+# Wallet
 # ---------------------------------------------------------------------------
 
 def load_wallet() -> dict:
-    if WALLET_FILE.exists():
-        try:
-            return json.loads(WALLET_FILE.read_text(encoding="utf-8"))
-        except Exception:
-            pass
+    w = kv_get("wallet")
+    if isinstance(w, dict):
+        return w
     return {"balance": 0.0, "credited_date": "", "credited_today": 0.0, "rewards": DEFAULT_REWARDS}
 
 
 def save_wallet(wallet: dict):
-    WALLET_FILE.write_text(json.dumps(wallet, ensure_ascii=False, indent=2), encoding="utf-8")
+    kv_set("wallet", wallet)
 
 
 def credit_points(wallet: dict, today: str, today_total: float):
-    """Add newly earned points to the persistent balance."""
     if wallet.get("credited_date") != today:
         wallet["credited_date"] = today
         wallet["credited_today"] = 0.0
-
     prev = wallet.get("credited_today", 0.0)
     if today_total > prev:
         wallet["balance"] = round(wallet.get("balance", 0.0) + (today_total - prev), 1)
@@ -106,7 +138,7 @@ def credit_points(wallet: dict, today: str, today_total: float):
 
 
 # ---------------------------------------------------------------------------
-# TickTick API helpers
+# TickTick helpers
 # ---------------------------------------------------------------------------
 
 def auth_headers():
@@ -142,7 +174,7 @@ def fetch_habits(headers):
 
 
 # ---------------------------------------------------------------------------
-# Routes — auth
+# Auth routes
 # ---------------------------------------------------------------------------
 
 @app.route("/")
@@ -189,7 +221,7 @@ def logout():
 
 
 # ---------------------------------------------------------------------------
-# Routes — score
+# Score
 # ---------------------------------------------------------------------------
 
 @app.route("/api/score")
@@ -203,7 +235,6 @@ def get_score():
     headers = auth_headers()
     errors = []
 
-    # Tasks
     raw_tasks, err = fetch_completed_tasks(headers)
     if err:
         errors.append(err)
@@ -223,7 +254,6 @@ def get_score():
         })
         counted_task_ids.add(tid)
 
-    # Habits
     habits, err = fetch_habits(headers)
     if err:
         errors.append(err)
@@ -247,7 +277,6 @@ def get_score():
     all_items = state["tasks"] + state["habits"]
     today_total = round(sum(i["score"] for i in all_items), 1)
 
-    # Credit earned points to wallet balance
     credit_points(wallet, today, today_total)
     save_wallet(wallet)
 
@@ -263,27 +292,21 @@ def get_score():
 
 
 # ---------------------------------------------------------------------------
-# Routes — wallet
+# Wallet / Rewards
 # ---------------------------------------------------------------------------
 
 @app.route("/api/redeem", methods=["POST"])
 def redeem():
     if "access_token" not in session:
         return jsonify({"error": "not_authenticated"}), 401
-
     data = request.get_json() or {}
-    reward_id = data.get("reward_id")
     wallet = load_wallet()
-
-    reward = next((r for r in wallet["rewards"] if r["id"] == reward_id), None)
+    reward = next((r for r in wallet["rewards"] if r["id"] == data.get("reward_id")), None)
     if not reward:
         return jsonify({"error": "reward not found"}), 404
-
-    cost = reward["cost"]
-    if wallet["balance"] < cost:
+    if wallet["balance"] < reward["cost"]:
         return jsonify({"error": "insufficient_balance", "balance": wallet["balance"]}), 400
-
-    wallet["balance"] = round(wallet["balance"] - cost, 1)
+    wallet["balance"] = round(wallet["balance"] - reward["cost"], 1)
     save_wallet(wallet)
     return jsonify({"balance": wallet["balance"], "redeemed": reward["name"]})
 
@@ -300,13 +323,9 @@ def get_rewards():
 def update_rewards():
     if "access_token" not in session:
         return jsonify({"error": "not_authenticated"}), 401
-
     data = request.get_json() or {}
-    rewards = data.get("rewards", [])
-
-    # Validate and assign IDs to new items
     clean = []
-    for r in rewards:
+    for r in data.get("rewards", []):
         name = str(r.get("name", "")).strip()
         try:
             cost = float(r.get("cost", 1))
@@ -314,7 +333,6 @@ def update_rewards():
             cost = 1.0
         if name:
             clean.append({"id": r.get("id") or str(uuid.uuid4()), "name": name, "cost": cost})
-
     wallet = load_wallet()
     wallet["rewards"] = clean
     save_wallet(wallet)
