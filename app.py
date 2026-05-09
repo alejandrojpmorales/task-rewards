@@ -10,7 +10,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-app = Flask(__name__)
+_ROOT = os.path.dirname(os.path.abspath(__file__))
+app = Flask(__name__, template_folder=os.path.join(_ROOT, "templates"))
 app.secret_key = os.environ.get("SECRET_KEY", "change-this-in-production")
 
 CLIENT_ID = os.environ.get("TICKTICK_CLIENT_ID")
