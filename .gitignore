@@ -1,0 +1,6 @@
+.env
+state.json
+wallet.json
+__pycache__/
+*.pyc
+.DS_Store

@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Task Rewards</title>
+  <style>
+    :root {
+      --bg: #0f0f13;
+      --surface: #1a1a24;
+      --surface2: #22222f;
+      --border: #2e2e3e;
+      --accent: #7c6af7;
+      --accent2: #5eead4;
+      --text: #e8e8f0;
+      --muted: #888899;
+      --gold: #f5c842;
+      --green: #4ade80;
+      --red: #f87171;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 16px;
+      padding-bottom: 48px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-top: 8px;
+    }
+
+    header h1 { font-size: 1.1rem; font-weight: 600; color: var(--accent); }
+
+    .btn {
+      background: var(--surface2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 7px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      text-decoration: none;
+      transition: color 0.15s, border-color 0.15s;
+      display: inline-block;
+    }
+    .btn:hover { color: var(--text); border-color: var(--accent); }
+    .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn-primary:hover { background: #6a59e0; border-color: #6a59e0; color: #fff; }
+    .btn-danger { border-color: rgba(248,113,113,0.4); color: var(--red); }
+    .btn-danger:hover { border-color: var(--red); }
+
+    /* Login */
+    .login-screen {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 70vh; gap: 16px; text-align: center;
+    }
+    .login-screen h2 { font-size: 1.6rem; font-weight: 700; }
+    .login-screen p { color: var(--muted); font-size: 0.95rem; max-width: 280px; }
+
+    /* Cards */
+    .cards-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px 16px;
+      text-align: center;
+    }
+
+    .card-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .card-value {
+      font-size: 2.4rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .card-value.earned {
+      background: linear-gradient(135deg, #a78bfa, #5eead4);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+
+    .card-value.balance { color: var(--gold); }
+
+    .card-sub { color: var(--muted); font-size: 0.75rem; margin-top: 4px; }
+
+    .date-badge {
+      display: inline-block;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 20px; padding: 4px 14px;
+      font-size: 0.78rem; color: var(--muted); margin-bottom: 16px;
+    }
+
+    .refresh-btn {
+      width: 100%; display: flex; align-items: center; justify-content: center;
+      gap: 8px; padding: 11px; border-radius: 12px; font-size: 0.9rem;
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--text); cursor: pointer; transition: border-color 0.15s; margin-bottom: 20px;
+    }
+    .refresh-btn:hover { border-color: var(--accent); }
+    .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Section */
+    .section-header {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+    }
+    .section-title {
+      font-size: 0.72rem; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--muted);
+    }
+
+    /* Rewards */
+    .rewards-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+
+    .reward-item {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 14px 16px;
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 12px; cursor: pointer; transition: border-color 0.15s, background 0.15s;
+      user-select: none;
+    }
+    .reward-item:hover { border-color: var(--gold); }
+    .reward-item:active { background: var(--surface2); }
+    .reward-item.insufficient { opacity: 0.45; cursor: not-allowed; }
+    .reward-item.insufficient:hover { border-color: var(--border); }
+    .reward-item.redeemed-flash { border-color: var(--green); background: rgba(74,222,128,0.06); }
+
+    .reward-name { font-size: 0.9rem; font-weight: 500; flex: 1; }
+
+    .reward-cost {
+      background: rgba(245,200,66,0.12); border: 1px solid rgba(245,200,66,0.3);
+      color: var(--gold); border-radius: 8px; padding: 4px 10px;
+      font-size: 0.82rem; font-weight: 700; white-space: nowrap; flex-shrink: 0;
+    }
+
+    /* Edit mode rewards */
+    .reward-edit-row {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 12px 14px;
+      display: flex; gap: 8px; align-items: center;
+    }
+
+    .reward-edit-row input {
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); border-radius: 8px; padding: 7px 10px; font-size: 0.85rem;
+      outline: none; transition: border-color 0.15s;
+    }
+    .reward-edit-row input:focus { border-color: var(--accent); }
+    .reward-edit-row .input-name { flex: 1; }
+    .reward-edit-row .input-cost { width: 60px; text-align: center; }
+
+    .add-reward-btn {
+      width: 100%; padding: 10px; border-radius: 12px; border: 1px dashed var(--border);
+      background: transparent; color: var(--muted); cursor: pointer; font-size: 0.85rem;
+      margin-top: 4px; transition: border-color 0.15s, color 0.15s;
+    }
+    .add-reward-btn:hover { border-color: var(--accent); color: var(--text); }
+
+    .edit-actions { display: flex; gap: 8px; margin-top: 10px; }
+    .edit-actions .btn { flex: 1; text-align: center; padding: 10px; }
+
+    /* Task list */
+    .task-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .task-item {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 13px 16px;
+      display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+    }
+
+    .task-info { flex: 1; min-width: 0; }
+    .task-title {
+      font-size: 0.88rem; font-weight: 500; margin-bottom: 5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .task-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+
+    .badge {
+      font-size: 0.68rem; padding: 2px 8px; border-radius: 20px; border: 1px solid transparent;
+    }
+    .badge-priority { background: rgba(245,200,66,0.1); border-color: rgba(245,200,66,0.3); color: var(--gold); }
+    .badge-frog     { background: rgba(74,222,128,0.1); border-color: rgba(74,222,128,0.3); color: var(--green); }
+    .badge-pomo     { background: rgba(94,234,212,0.1); border-color: rgba(94,234,212,0.3); color: var(--accent2); }
+    .badge-habit    { background: rgba(167,139,250,0.1); border-color: rgba(167,139,250,0.3); color: #a78bfa; }
+
+    .task-score { font-size: 1.05rem; font-weight: 700; color: var(--accent); white-space: nowrap; flex-shrink: 0; }
+
+    .empty-state { text-align: center; padding: 32px 20px; color: var(--muted); }
+    .empty-state .emoji { font-size: 2.2rem; margin-bottom: 10px; }
+    .empty-state p { font-size: 0.88rem; }
+
+    .error-msg {
+      background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
+      color: var(--red); border-radius: 12px; padding: 12px 14px; font-size: 0.82rem; margin-bottom: 14px;
+    }
+
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); padding: 10px 20px; border-radius: 12px;
+      font-size: 0.85rem; opacity: 0; transition: opacity 0.2s;
+      pointer-events: none; white-space: nowrap; z-index: 100;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+{% if not logged_in %}
+<div class="login-screen">
+  <div style="font-size:3rem">⭐</div>
+  <h2>Task Rewards</h2>
+  <p>Connect your TickTick account to track your daily score.</p>
+  <a href="/login" class="btn btn-primary">Connect TickTick</a>
+</div>
+
+{% else %}
+<header>
+  <h1>⭐ Task Rewards</h1>
+  <a href="/logout" class="btn">Logout</a>
+</header>
+
+<div id="error" class="error-msg" style="display:none"></div>
+
+<!-- Score + Balance -->
+<div class="cards-row">
+  <div class="card">
+    <div class="card-label">Earned today</div>
+    <div class="card-value earned" id="today-score">—</div>
+    <div class="card-sub" id="task-count">—</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Balance</div>
+    <div class="card-value balance" id="balance">—</div>
+    <div class="card-sub">points</div>
+  </div>
+</div>
+
+<div class="date-badge" id="date-badge">—</div>
+
+<button class="refresh-btn" id="refresh-btn" onclick="loadScore()">
+  <span id="refresh-icon">↻</span> Refresh
+</button>
+
+<!-- Rewards -->
+<div class="section-header">
+  <div class="section-title">Rewards</div>
+  <button class="btn" id="edit-btn" onclick="toggleEdit()">Edit</button>
+</div>
+
+<div class="rewards-list" id="rewards-list"></div>
+<div id="edit-actions" style="display:none" class="edit-actions">
+  <button class="btn" onclick="addRewardRow()">+ Add</button>
+  <button class="btn btn-primary" onclick="saveRewards()">Save</button>
+  <button class="btn btn-danger" onclick="cancelEdit()">Cancel</button>
+</div>
+
+<!-- Completed items -->
+<div class="section-header" style="margin-top:24px">
+  <div class="section-title">Completed today</div>
+</div>
+<div class="task-list" id="task-list"></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let editMode = false;
+  let currentRewards = [];
+  let currentBalance = 0;
+
+  // ── Score ──────────────────────────────────────────────────────────────────
+
+  async function loadScore() {
+    const btn = document.getElementById("refresh-btn");
+    const icon = document.getElementById("refresh-icon");
+    const errorEl = document.getElementById("error");
+
+    btn.disabled = true;
+    icon.classList.add("spin");
+    errorEl.style.display = "none";
+
+    try {
+      const res = await fetch("/api/score");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load");
+
+      document.getElementById("today-score").textContent = data.today_total.toFixed(1);
+      document.getElementById("balance").textContent = data.balance.toFixed(1);
+      currentBalance = data.balance;
+
+      const parts = [];
+      if (data.task_count)  parts.push(`${data.task_count} task${data.task_count  !== 1 ? "s" : ""}`);
+      if (data.habit_count) parts.push(`${data.habit_count} habit${data.habit_count !== 1 ? "s" : ""}`);
+      document.getElementById("task-count").textContent = parts.join(" · ") || "nothing yet";
+
+      const dateStr = new Date(data.date + "T12:00:00").toLocaleDateString("en-US", {
+        weekday: "long", month: "long", day: "numeric"
+      });
+      document.getElementById("date-badge").textContent = dateStr;
+
+      renderItems(data.items);
+      if (data.errors && data.errors.length) console.warn("API errors:", data.errors);
+    } catch (err) {
+      const errorEl = document.getElementById("error");
+      errorEl.textContent = "Error: " + err.message;
+      errorEl.style.display = "block";
+    } finally {
+      btn.disabled = false;
+      icon.classList.remove("spin");
+    }
+  }
+
+  // ── Rewards ────────────────────────────────────────────────────────────────
+
+  async function loadRewards() {
+    const res = await fetch("/api/rewards");
+    if (!res.ok) return;
+    const data = await res.json();
+    currentRewards = data.rewards;
+    currentBalance = data.balance;
+    renderRewards();
+  }
+
+  function renderRewards() {
+    const list = document.getElementById("rewards-list");
+    if (editMode) {
+      list.innerHTML = currentRewards.map((r, i) => `
+        <div class="reward-edit-row" data-id="${r.id}">
+          <input class="input-name" value="${escHtml(r.name)}" placeholder="Reward name" />
+          <input class="input-cost" type="number" min="0" step="0.5" value="${r.cost}" />
+          <button class="btn btn-danger" style="padding:6px 10px" onclick="removeRewardRow(this)">✕</button>
+        </div>`).join("");
+      document.getElementById("edit-actions").style.display = "flex";
+      document.getElementById("edit-btn").style.display = "none";
+    } else {
+      document.getElementById("edit-actions").style.display = "none";
+      document.getElementById("edit-btn").style.display = "";
+      if (!currentRewards.length) {
+        list.innerHTML = `<div class="empty-state"><p>No rewards yet. Hit Edit to add some.</p></div>`;
+        return;
+      }
+      list.innerHTML = currentRewards.map(r => {
+        const canAfford = currentBalance >= r.cost;
+        return `
+          <div class="reward-item ${canAfford ? "" : "insufficient"}"
+               onclick="redeem('${r.id}', ${r.cost}, this)"
+               data-id="${r.id}">
+            <span class="reward-name">${escHtml(r.name)}</span>
+            <span class="reward-cost">${r.cost} pts</span>
+          </div>`;
+      }).join("");
+    }
+  }
+
+  async function redeem(rewardId, cost, el) {
+    if (editMode) return;
+    if (currentBalance < cost) return;
+
+    const res = await fetch("/api/redeem", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({reward_id: rewardId}),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(data.error === "insufficient_balance" ? "Not enough points!" : "Error redeeming");
+      return;
+    }
+
+    currentBalance = data.balance;
+    document.getElementById("balance").textContent = currentBalance.toFixed(1);
+
+    el.classList.add("redeemed-flash");
+    setTimeout(() => el.classList.remove("redeemed-flash"), 800);
+    showToast(`✓ Redeemed! Balance: ${currentBalance.toFixed(1)} pts`);
+    renderRewards();
+  }
+
+  // ── Edit rewards ────────────────────────────────────────────────────────────
+
+  function toggleEdit() {
+    editMode = true;
+    renderRewards();
+  }
+
+  function cancelEdit() {
+    editMode = false;
+    renderRewards();
+  }
+
+  function addRewardRow() {
+    const list = document.getElementById("rewards-list");
+    const row = document.createElement("div");
+    row.className = "reward-edit-row";
+    row.dataset.id = "";
+    row.innerHTML = `
+      <input class="input-name" placeholder="Reward name" />
+      <input class="input-cost" type="number" min="0" step="0.5" value="1" />
+      <button class="btn btn-danger" style="padding:6px 10px" onclick="removeRewardRow(this)">✕</button>`;
+    list.appendChild(row);
+  }
+
+  function removeRewardRow(btn) {
+    btn.closest(".reward-edit-row").remove();
+  }
+
+  async function saveRewards() {
+    const rows = document.querySelectorAll(".reward-edit-row");
+    const rewards = Array.from(rows).map(row => ({
+      id: row.dataset.id || "",
+      name: row.querySelector(".input-name").value.trim(),
+      cost: parseFloat(row.querySelector(".input-cost").value) || 1,
+    })).filter(r => r.name);
+
+    const res = await fetch("/api/rewards", {
+      method: "PUT",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({rewards}),
+    });
+    if (!res.ok) { showToast("Failed to save"); return; }
+    const data = await res.json();
+    currentRewards = data.rewards;
+    editMode = false;
+    renderRewards();
+    showToast("Rewards saved!");
+  }
+
+  // ── Completed items ─────────────────────────────────────────────────────────
+
+  function renderItems(items) {
+    const list = document.getElementById("task-list");
+    if (!items || !items.length) {
+      list.innerHTML = `<div class="empty-state"><div class="emoji">🎯</div><p>No completed tasks or habits yet today.<br>Go crush it!</p></div>`;
+      return;
+    }
+    list.innerHTML = items.map(t => {
+      const badges = [];
+      if (t.type === "habit") {
+        badges.push(`<span class="badge badge-habit">✅ Habit</span>`);
+      } else {
+        if (t.priority === 5)              badges.push(`<span class="badge badge-priority">⚡ High</span>`);
+        if ((t.tags||[]).includes("🐸"))   badges.push(`<span class="badge badge-frog">🐸 Frog</span>`);
+        if ((t.tags||[]).includes("4⏱️")) badges.push(`<span class="badge badge-pomo">4⏱️ Pomo</span>`);
+      }
+      return `
+        <div class="task-item">
+          <div class="task-info">
+            <div class="task-title">${escHtml(t.title)}</div>
+            <div class="task-badges">${badges.join("")}</div>
+          </div>
+          <div class="task-score">+${t.score}</div>
+        </div>`;
+    }).join("");
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+
+  function escHtml(str) {
+    return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 2200);
+  }
+
+  loadRewards();
+  loadScore();
+</script>
+{% endif %}
+
+</body>
+</html>
