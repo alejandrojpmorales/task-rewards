@@ -408,7 +408,22 @@
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center">
         <span style="font-size:0.9rem">4⏱️ Pomo tag</span>
-        <input id="cfg-pomo" type="number" min="0" step="0.1"
+        <input id="cfg-pomo4" type="number" min="0" step="0.1"
+               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.9rem">6⏱️ Pomo tag</span>
+        <input id="cfg-pomo6" type="number" min="0" step="0.1"
+               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.9rem">8⏱️ Pomo tag</span>
+        <input id="cfg-pomo8" type="number" min="0" step="0.1"
+               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.9rem">✅ Habit check-in</span>
+        <input id="cfg-habit" type="number" min="0" step="0.1"
                style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
       </div>
     </div>
@@ -689,14 +704,20 @@
     const s = data.scoring;
     document.getElementById("cfg-priority").value = s.priority_high ?? 0.5;
     document.getElementById("cfg-frog").value     = s.tag_frog      ?? 0.8;
-    document.getElementById("cfg-pomo").value     = s.tag_pomo      ?? 0.8;
+    document.getElementById("cfg-pomo4").value    = s.tag_pomo4     ?? 0.8;
+    document.getElementById("cfg-pomo6").value    = s.tag_pomo6     ?? 1.2;
+    document.getElementById("cfg-pomo8").value    = s.tag_pomo8     ?? 1.6;
+    document.getElementById("cfg-habit").value    = s.habit         ?? 1.0;
   }
 
   async function saveConfig() {
     const scoring = {
       priority_high: parseFloat(document.getElementById("cfg-priority").value) || 0,
       tag_frog:      parseFloat(document.getElementById("cfg-frog").value)     || 0,
-      tag_pomo:      parseFloat(document.getElementById("cfg-pomo").value)     || 0,
+      tag_pomo4:     parseFloat(document.getElementById("cfg-pomo4").value)    || 0,
+      tag_pomo6:     parseFloat(document.getElementById("cfg-pomo6").value)    || 0,
+      tag_pomo8:     parseFloat(document.getElementById("cfg-pomo8").value)    || 0,
+      habit:         parseFloat(document.getElementById("cfg-habit").value)    || 0,
     };
     const res = await fetch("/api/config", {
       method: "PUT",
