@@ -486,10 +486,8 @@ def redeem():
         return jsonify({"error": "insufficient_balance", "balance": wallet["balance"]}), 400
     wallet["balance"] = round(wallet["balance"] - reward["cost"], 1)
 
-    # Auto-generate password if none exists yet
     if not wallet["secure_folder"].get("password"):
-        import random, string
-        wallet["secure_folder"]["password"] = "".join(random.choices(string.ascii_letters, k=10))
+        return jsonify({"error": "no_password_set", "balance": wallet["balance"], "redeemed": reward["name"], "secure_folder": None}), 200
 
     unlock_minutes = int(reward.get("unlock_minutes") or 0) or 30  # default 30 min
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=unlock_minutes)
