@@ -2,6 +2,8 @@ import os
 import json
 import uuid
 import base64
+import random
+import string
 from datetime import date, datetime, timezone, timedelta
 from pathlib import Path
 from flask import Flask, redirect, request, session, jsonify, render_template
@@ -558,6 +560,18 @@ def set_sf_password():
     wallet["secure_folder"]["password"] = password if password else None
     save_wallet(wallet)
     return jsonify({"ok": True, "has_password": bool(password)})
+
+
+@app.route("/api/secure-folder/generate", methods=["POST"])
+def generate_sf_password():
+    if "access_token" not in session:
+        return jsonify({"error": "not_authenticated"}), 401
+    alphabet = string.ascii_letters  # a-z + A-Z
+    password = "".join(random.choices(alphabet, k=10))
+    wallet = load_wallet()
+    wallet["secure_folder"]["password"] = password
+    save_wallet(wallet)
+    return jsonify({"ok": True, "password": password})
 
 
 @app.route("/api/secure-folder/lock", methods=["POST"])

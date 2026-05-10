@@ -427,13 +427,15 @@
   <div class="section-title" style="margin-bottom:16px">Samsung Secure Folder</div>
   <div class="sf-settings-card">
     <div style="font-size:0.82rem;color:var(--muted);margin-bottom:14px">
-      Set the password you use for Samsung Secure Folder. When you redeem a reward with a 🔓 unlock time, it will be revealed on the Today tab with a countdown.
+      The app generates a random 10-character password for you. Copy it and set it as your Samsung Secure Folder password once. From then on, earn points and redeem a reward to reveal it.
     </div>
-    <div class="sf-settings-row">
-      <input id="sf-password-input" class="sf-input" type="password" placeholder="Secure Folder password" autocomplete="new-password" />
+    <div id="sf-generated-box" style="display:none;background:var(--bg);border:1px solid rgba(124,106,247,0.4);border-radius:12px;padding:14px;text-align:center;margin-bottom:14px">
+      <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--accent);margin-bottom:6px">Generated password</div>
+      <div id="sf-generated-value" style="font-size:1.6rem;font-weight:800;letter-spacing:0.15em;font-family:monospace;color:var(--text)"></div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:6px">Set this as your Secure Folder password, then click Copy when you need it.</div>
     </div>
     <div class="sf-settings-row" style="margin-bottom:0">
-      <button class="btn btn-primary" onclick="saveSFPassword()" style="flex:1;text-align:center;padding:11px">Save password</button>
+      <button class="btn btn-primary" onclick="generateSFPassword()" style="flex:1;text-align:center;padding:11px">Generate new password</button>
       <button class="btn btn-danger" onclick="clearSFPassword()" style="flex:1;text-align:center;padding:11px">Clear</button>
     </div>
     <div id="sf-password-status" style="font-size:0.78rem;color:var(--muted);margin-top:10px;text-align:center"></div>
@@ -820,32 +822,25 @@
     navigator.clipboard.writeText(pw).then(() => showToast("Password copied!"));
   }
 
-  async function saveSFPassword() {
-    const pw = document.getElementById("sf-password-input").value;
-    const res = await fetch("/api/secure-folder/password", {
-      method: "PUT",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({password: pw}),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      document.getElementById("sf-password-status").textContent =
-        data.has_password ? "✓ Password saved" : "Password cleared";
-      document.getElementById("sf-password-input").value = "";
-      showToast(data.has_password ? "Password saved!" : "Password cleared");
-    } else {
-      showToast("Failed to save password");
-    }
+  async function generateSFPassword() {
+    const res = await fetch("/api/secure-folder/generate", {method: "POST"});
+    if (!res.ok) { showToast("Failed to generate"); return; }
+    const data = await res.json();
+    document.getElementById("sf-generated-value").textContent = data.password;
+    document.getElementById("sf-generated-box").style.display = "";
+    document.getElementById("sf-password-status").textContent = "✓ Password saved — set it in Secure Folder settings";
+    showToast("New password generated!");
   }
 
   async function clearSFPassword() {
-    document.getElementById("sf-password-input").value = "";
     const res = await fetch("/api/secure-folder/password", {
       method: "PUT",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({password: ""}),
     });
     if (res.ok) {
+      document.getElementById("sf-generated-box").style.display = "none";
+      document.getElementById("sf-generated-value").textContent = "";
       document.getElementById("sf-password-status").textContent = "No password set";
       showToast("Password cleared");
     }
