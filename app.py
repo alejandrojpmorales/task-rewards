@@ -2,7 +2,7 @@ import os
 import json
 import uuid
 import base64
-from datetime import date
+from datetime import date, datetime, timezone, timedelta
 from pathlib import Path
 from flask import Flask, redirect, request, session, jsonify, render_template
 import requests
@@ -140,9 +140,12 @@ def load_wallet() -> dict:
     if isinstance(w, dict):
         if "scoring" not in w:
             w["scoring"] = DEFAULT_SCORING.copy()
+        if "secure_folder" not in w:
+            w["secure_folder"] = {"password": None, "active_unlock": None}
         return w
     return {"balance": 0.0, "credited_date": "", "credited_today": 0.0,
-            "rewards": DEFAULT_REWARDS, "scoring": DEFAULT_SCORING.copy()}
+            "rewards": DEFAULT_REWARDS, "scoring": DEFAULT_SCORING.copy(),
+            "secure_folder": {"password": None, "active_unlock": None}}
 
 
 def save_wallet(wallet: dict):
@@ -157,6 +160,30 @@ def credit_points(wallet: dict, today: str, today_total: float):
     if today_total > prev:
         wallet["balance"] = round(wallet.get("balance", 0.0) + (today_total - prev), 1)
         wallet["credited_today"] = today_total
+
+
+# ---------------------------------------------------------------------------
+# Secure Folder helpers
+# ---------------------------------------------------------------------------
+
+def get_secure_folder_status(wallet: dict) -> dict:
+    sf = wallet.get("secure_folder") or {}
+    unlock = sf.get("active_unlock")
+    if not unlock:
+        return {"unlocked": False, "password": None, "expires_at": None, "seconds_left": 0, "reward_name": None}
+    expires_at = datetime.fromisoformat(unlock["expires_at"])
+    now = datetime.now(timezone.utc)
+    seconds_left = max(0, int((expires_at - now).total_seconds()))
+    if seconds_left == 0:
+        wallet["secure_folder"]["active_unlock"] = None
+        return {"unlocked": False, "password": None, "expires_at": None, "seconds_left": 0, "reward_name": None}
+    return {
+        "unlocked": True,
+        "password": sf.get("password"),
+        "expires_at": unlock["expires_at"],
+        "seconds_left": seconds_left,
+        "reward_name": unlock.get("reward_name"),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -456,8 +483,19 @@ def redeem():
     if wallet["balance"] < reward["cost"]:
         return jsonify({"error": "insufficient_balance", "balance": wallet["balance"]}), 400
     wallet["balance"] = round(wallet["balance"] - reward["cost"], 1)
+
+    unlock_minutes = int(reward.get("unlock_minutes") or 0)
+    sf_status = None
+    if unlock_minutes > 0 and wallet["secure_folder"].get("password"):
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=unlock_minutes)
+        wallet["secure_folder"]["active_unlock"] = {
+            "expires_at": expires_at.isoformat(),
+            "reward_name": reward["name"],
+        }
+        sf_status = get_secure_folder_status(wallet)
+
     save_wallet(wallet)
-    return jsonify({"balance": wallet["balance"], "redeemed": reward["name"]})
+    return jsonify({"balance": wallet["balance"], "redeemed": reward["name"], "secure_folder": sf_status})
 
 
 @app.route("/api/rewards", methods=["GET"])
@@ -480,12 +518,56 @@ def update_rewards():
             cost = float(r.get("cost", 1))
         except (ValueError, TypeError):
             cost = 1.0
+        try:
+            unlock_minutes = max(0, int(r.get("unlock_minutes") or 0))
+        except (ValueError, TypeError):
+            unlock_minutes = 0
         if name:
-            clean.append({"id": r.get("id") or str(uuid.uuid4()), "name": name, "cost": cost})
+            clean.append({"id": r.get("id") or str(uuid.uuid4()), "name": name, "cost": cost, "unlock_minutes": unlock_minutes})
     wallet = load_wallet()
     wallet["rewards"] = clean
     save_wallet(wallet)
     return jsonify({"rewards": wallet["rewards"]})
+
+
+# ---------------------------------------------------------------------------
+# Secure Folder routes
+# ---------------------------------------------------------------------------
+
+@app.route("/api/secure-folder", methods=["GET"])
+def secure_folder_status():
+    if "access_token" not in session:
+        return jsonify({"error": "not_authenticated"}), 401
+    wallet = load_wallet()
+    status = get_secure_folder_status(wallet)
+    if not status["unlocked"] and wallet["secure_folder"].get("active_unlock") is None:
+        pass
+    else:
+        save_wallet(wallet)
+    has_password = bool(wallet["secure_folder"].get("password"))
+    return jsonify({**status, "has_password": has_password})
+
+
+@app.route("/api/secure-folder/password", methods=["PUT"])
+def set_sf_password():
+    if "access_token" not in session:
+        return jsonify({"error": "not_authenticated"}), 401
+    data = request.get_json() or {}
+    password = str(data.get("password", "")).strip()
+    wallet = load_wallet()
+    wallet["secure_folder"]["password"] = password if password else None
+    save_wallet(wallet)
+    return jsonify({"ok": True, "has_password": bool(password)})
+
+
+@app.route("/api/secure-folder/lock", methods=["POST"])
+def lock_sf():
+    if "access_token" not in session:
+        return jsonify({"error": "not_authenticated"}), 401
+    wallet = load_wallet()
+    wallet["secure_folder"]["active_unlock"] = None
+    save_wallet(wallet)
+    return jsonify({"ok": True, "unlocked": False})
 
 
 if __name__ == "__main__":
