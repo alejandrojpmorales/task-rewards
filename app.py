@@ -58,6 +58,11 @@ DEFAULT_REWARDS = [
     {"id": str(uuid.uuid4()), "name": "30 mins of doomscrolling", "cost": 12},
 ]
 
+DEFAULT_PUNISHMENTS = [
+    {"id": str(uuid.uuid4()), "name": "Used a reward for free",  "cost": 5},
+    {"id": str(uuid.uuid4()), "name": "Opened a blocked app",    "cost": 10},
+]
+
 
 # ---------------------------------------------------------------------------
 # Storage abstraction — Upstash Redis in production, JSON files locally
@@ -149,17 +154,20 @@ def load_wallet() -> dict:
         if "scoring" not in w:
             w["scoring"] = DEFAULT_SCORING.copy()
         else:
-            # migrate old tag_pomo → tag_pomo4
             if "tag_pomo" in w["scoring"] and "tag_pomo4" not in w["scoring"]:
                 w["scoring"]["tag_pomo4"] = w["scoring"].pop("tag_pomo")
             for key, default in DEFAULT_SCORING.items():
                 w["scoring"].setdefault(key, default)
-        if "secure_folder" not in w:
-            w["secure_folder"] = {"password": None, "active_unlock": None}
+        w.setdefault("secure_folder", {"password": None, "active_unlock": None})
+        w.setdefault("punishments", DEFAULT_PUNISHMENTS)
+        w.setdefault("last_activity_at", None)
+        w.setdefault("inactivity_punished_at", None)
         return w
     return {"balance": 0.0, "credited_date": "", "credited_today": 0.0,
-            "rewards": DEFAULT_REWARDS, "scoring": DEFAULT_SCORING.copy(),
-            "secure_folder": {"password": None, "active_unlock": None}}
+            "rewards": DEFAULT_REWARDS, "punishments": DEFAULT_PUNISHMENTS,
+            "scoring": DEFAULT_SCORING.copy(),
+            "secure_folder": {"password": None, "active_unlock": None},
+            "last_activity_at": None, "inactivity_punished_at": None}
 
 
 def save_wallet(wallet: dict):
@@ -174,6 +182,31 @@ def credit_points(wallet: dict, today: str, today_total: float):
     if today_total > prev:
         wallet["balance"] = round(wallet.get("balance", 0.0) + (today_total - prev), 1)
         wallet["credited_today"] = today_total
+
+
+# ---------------------------------------------------------------------------
+# Inactivity punishment
+# ---------------------------------------------------------------------------
+
+def check_inactivity_punishment(wallet: dict, state: dict) -> bool:
+    """Wipe balance if no activity recorded in the last 24 h. Returns True if applied."""
+    last_activity = wallet.get("last_activity_at")
+    if not last_activity:
+        return False
+    all_items = state["tasks"] + state["habits"] + state.get("focuses", [])
+    if all_items:
+        return False
+    now = datetime.now(timezone.utc)
+    last_dt = datetime.fromisoformat(last_activity)
+    if (now - last_dt).total_seconds() < 86400:
+        return False
+    punished_at = wallet.get("inactivity_punished_at")
+    if punished_at and datetime.fromisoformat(punished_at) > last_dt:
+        return False  # already wiped for this inactivity gap
+    wallet["balance"] = 0.0
+    wallet["credited_today"] = 0.0
+    wallet["inactivity_punished_at"] = now.isoformat()
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -362,6 +395,7 @@ def get_score():
     today = date.today().isoformat()
     state = load_state(today)
     wallet = load_wallet()
+    inactivity_punished = check_inactivity_punishment(wallet, state)
     headers = auth_headers()
     errors = []
 
@@ -431,6 +465,8 @@ def get_score():
     today_total = round(sum(i["score"] for i in all_items), 1)
 
     credit_points(wallet, today, today_total)
+    if today_total > 0:
+        wallet["last_activity_at"] = datetime.now(timezone.utc).isoformat()
     save_wallet(wallet)
 
     return jsonify({
@@ -441,6 +477,7 @@ def get_score():
         "focus_count": len(state["focuses"]),
         "items": sorted(all_items, key=lambda i: i["score"], reverse=True),
         "balance": wallet["balance"],
+        "inactivity_punished": inactivity_punished,
         "errors": errors,
     })
 
@@ -520,6 +557,48 @@ def get_rewards():
         return jsonify({"error": "not_authenticated"}), 401
     wallet = load_wallet()
     return jsonify({"rewards": wallet["rewards"], "balance": wallet["balance"]})
+
+
+@app.route("/api/punish", methods=["POST"])
+def punish():
+    if "access_token" not in session:
+        return jsonify({"error": "not_authenticated"}), 401
+    data = request.get_json() or {}
+    wallet = load_wallet()
+    punishment = next((p for p in wallet.get("punishments", []) if p["id"] == data.get("punishment_id")), None)
+    if not punishment:
+        return jsonify({"error": "punishment not found"}), 404
+    wallet["balance"] = max(0.0, round(wallet["balance"] - punishment["cost"], 1))
+    save_wallet(wallet)
+    return jsonify({"balance": wallet["balance"], "applied": punishment["name"]})
+
+
+@app.route("/api/punishments", methods=["GET"])
+def get_punishments():
+    if "access_token" not in session:
+        return jsonify({"error": "not_authenticated"}), 401
+    wallet = load_wallet()
+    return jsonify({"punishments": wallet.get("punishments", []), "balance": wallet["balance"]})
+
+
+@app.route("/api/punishments", methods=["PUT"])
+def update_punishments():
+    if "access_token" not in session:
+        return jsonify({"error": "not_authenticated"}), 401
+    data = request.get_json() or {}
+    clean = []
+    for p in data.get("punishments", []):
+        name = str(p.get("name", "")).strip()
+        try:
+            cost = float(p.get("cost", 1))
+        except (ValueError, TypeError):
+            cost = 1.0
+        if name:
+            clean.append({"id": p.get("id") or str(uuid.uuid4()), "name": name, "cost": cost})
+    wallet = load_wallet()
+    wallet["punishments"] = clean
+    save_wallet(wallet)
+    return jsonify({"punishments": wallet["punishments"]})
 
 
 @app.route("/api/rewards", methods=["PUT"])

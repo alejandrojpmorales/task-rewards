@@ -249,6 +249,33 @@
       font-size: 0.72rem; color: var(--muted); margin-top: 3px;
     }
 
+    /* Inactivity warning */
+    .inactivity-banner {
+      background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.4);
+      border-radius: 14px; padding: 14px 16px; margin-bottom: 16px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .inactivity-banner .icon { font-size: 1.4rem; flex-shrink: 0; }
+    .inactivity-banner .msg { font-size: 0.85rem; color: var(--red); }
+    .inactivity-banner .msg strong { display: block; font-size: 0.95rem; margin-bottom: 2px; }
+
+    /* Punishment buttons */
+    .punish-item {
+      background: rgba(248,113,113,0.06); border: 1px solid rgba(248,113,113,0.25);
+      border-radius: 14px; padding: 14px 16px;
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 12px; cursor: pointer; transition: border-color 0.15s, background 0.15s;
+      user-select: none;
+    }
+    .punish-item:hover { border-color: var(--red); background: rgba(248,113,113,0.1); }
+    .punish-item:active { background: rgba(248,113,113,0.16); }
+    .punish-item .reward-name { font-size: 0.9rem; font-weight: 500; flex: 1; color: var(--text); }
+    .punish-cost {
+      background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3);
+      color: var(--red); border-radius: 8px; padding: 4px 10px;
+      font-size: 0.82rem; font-weight: 700; white-space: nowrap; flex-shrink: 0;
+    }
+
     /* Secure Folder unlock card */
     .sf-card {
       background: linear-gradient(135deg, rgba(124,106,247,0.15), rgba(94,234,212,0.1));
@@ -342,6 +369,15 @@
   <span id="refresh-icon">↻</span> Refresh
 </button>
 
+<!-- Inactivity punishment banner -->
+<div id="inactivity-banner" class="inactivity-banner" style="display:none">
+  <div class="icon">💀</div>
+  <div class="msg">
+    <strong>All points wiped!</strong>
+    No activity detected in the last 24 hours.
+  </div>
+</div>
+
 <!-- Secure Folder unlock reveal (shown only when active) -->
 <div id="sf-reveal-card" class="sf-card" style="display:none">
   <div class="sf-card-header">
@@ -369,6 +405,18 @@
   <button class="btn" onclick="addRewardRow()">+ Add</button>
   <button class="btn btn-primary" onclick="saveRewards()">Save</button>
   <button class="btn btn-danger" onclick="cancelEdit()">Cancel</button>
+</div>
+
+<!-- Punishments -->
+<div class="section-header" style="margin-top:24px">
+  <div class="section-title">Punishments</div>
+  <button class="btn" id="punish-edit-btn" onclick="togglePunishEdit()">Edit</button>
+</div>
+<div class="rewards-list" id="punish-list"></div>
+<div id="punish-edit-actions" style="display:none" class="edit-actions">
+  <button class="btn" onclick="addPunishRow()">+ Add</button>
+  <button class="btn btn-primary" onclick="savePunishments()">Save</button>
+  <button class="btn btn-danger" onclick="cancelPunishEdit()">Cancel</button>
 </div>
 
 <!-- Completed items -->
@@ -459,7 +507,9 @@
 
 <script>
   let editMode = false;
+  let punishEditMode = false;
   let currentRewards = [];
+  let currentPunishments = [];
   let currentBalance = 0;
 
   // ── Score ──────────────────────────────────────────────────────────────────
@@ -494,6 +544,8 @@
       document.getElementById("date-badge").textContent = dateStr;
 
       renderItems(data.items);
+      document.getElementById("inactivity-banner").style.display =
+        data.inactivity_punished ? "" : "none";
       if (data.errors && data.errors.length) console.warn("API errors:", data.errors);
     } catch (err) {
       const errorEl = document.getElementById("error");
@@ -876,7 +928,105 @@
     }
   }
 
+  // ── Punishments ────────────────────────────────────────────────────────────
+
+  async function loadPunishments() {
+    const res = await fetch("/api/punishments");
+    if (!res.ok) return;
+    const data = await res.json();
+    currentPunishments = data.punishments;
+    renderPunishments();
+  }
+
+  function renderPunishments() {
+    const list = document.getElementById("punish-list");
+    if (punishEditMode) {
+      list.innerHTML = currentPunishments.map(p => `
+        <div class="reward-edit-row" data-id="${p.id}">
+          <input class="input-name" value="${escHtml(p.name)}" placeholder="Punishment name" />
+          <input class="input-cost" type="number" min="0" step="0.5" value="${p.cost}" title="Points to deduct" />
+          <button class="btn btn-danger" style="padding:6px 10px" onclick="removePunishRow(this)">✕</button>
+        </div>`).join("");
+      document.getElementById("punish-edit-actions").style.display = "flex";
+      document.getElementById("punish-edit-btn").style.display = "none";
+    } else {
+      document.getElementById("punish-edit-actions").style.display = "none";
+      document.getElementById("punish-edit-btn").style.display = "";
+      if (!currentPunishments.length) {
+        list.innerHTML = `<div class="empty-state"><p>No punishments yet. Hit Edit to add some.</p></div>`;
+        return;
+      }
+      list.innerHTML = currentPunishments.map(p => `
+        <div class="punish-item" onclick="applyPunishment('${p.id}', ${p.cost}, this)">
+          <span class="reward-name">${escHtml(p.name)}</span>
+          <span class="punish-cost">−${p.cost} pts</span>
+        </div>`).join("");
+    }
+  }
+
+  async function applyPunishment(punishmentId, cost, el) {
+    if (punishEditMode) return;
+    const res = await fetch("/api/punish", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({punishment_id: punishmentId}),
+    });
+    const data = await res.json();
+    if (!res.ok) { showToast("Error applying punishment"); return; }
+    currentBalance = data.balance;
+    document.getElementById("balance").textContent = currentBalance.toFixed(1);
+    showToast(`💀 −${cost} pts. Balance: ${currentBalance.toFixed(1)}`);
+    renderRewards();
+  }
+
+  function togglePunishEdit() {
+    punishEditMode = true;
+    renderPunishments();
+  }
+
+  function cancelPunishEdit() {
+    punishEditMode = false;
+    renderPunishments();
+  }
+
+  function addPunishRow() {
+    const list = document.getElementById("punish-list");
+    const row = document.createElement("div");
+    row.className = "reward-edit-row";
+    row.dataset.id = "";
+    row.innerHTML = `
+      <input class="input-name" placeholder="Punishment name" />
+      <input class="input-cost" type="number" min="0" step="0.5" value="5" title="Points to deduct" />
+      <button class="btn btn-danger" style="padding:6px 10px" onclick="removePunishRow(this)">✕</button>`;
+    list.appendChild(row);
+  }
+
+  function removePunishRow(btn) {
+    btn.closest(".reward-edit-row").remove();
+  }
+
+  async function savePunishments() {
+    const rows = document.querySelectorAll("#punish-list .reward-edit-row");
+    const punishments = Array.from(rows).map(row => ({
+      id: row.dataset.id || "",
+      name: row.querySelector(".input-name").value.trim(),
+      cost: parseFloat(row.querySelector(".input-cost").value) || 1,
+    })).filter(p => p.name);
+    const res = await fetch("/api/punishments", {
+      method: "PUT",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({punishments}),
+    });
+    if (!res.ok) { showToast("Failed to save"); return; }
+    const data = await res.json();
+    currentPunishments = data.punishments;
+    punishEditMode = false;
+    renderPunishments();
+    showToast("Punishments saved!");
+  }
+
   loadRewards();
+  loadPunishments();
   loadScore();
   loadSFStatus();
 </script>
