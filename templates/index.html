@@ -445,6 +445,11 @@
 
     <div style="display:flex;flex-direction:column;gap:12px">
       <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.9rem">📝 Base task score</span>
+        <input id="cfg-base" type="number" min="0" step="0.1"
+               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
         <span style="font-size:0.9rem">⚡ High priority</span>
         <input id="cfg-priority" type="number" min="0" step="0.1"
                style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
@@ -482,10 +487,6 @@
     </button>
   </div>
 
-  <div class="card" style="opacity:0.6;margin-bottom:24px">
-    <div class="card-label" style="text-align:left;margin-bottom:4px">Base score</div>
-    <div style="font-size:0.85rem;color:var(--muted)">Every completed task always starts at <strong style="color:var(--text)">+1.0</strong></div>
-  </div>
 
   <div class="section-title" style="margin-bottom:16px">Samsung Secure Folder</div>
   <div class="sf-settings-card">
@@ -754,6 +755,7 @@
     if (!res.ok) return;
     const data = await res.json();
     const s = data.scoring;
+    document.getElementById("cfg-base").value      = s.base_task     ?? 1.0;
     document.getElementById("cfg-priority").value = s.priority_high ?? 0.5;
     document.getElementById("cfg-frog").value     = s.tag_frog      ?? 0.8;
     document.getElementById("cfg-pomo4").value    = s.tag_pomo4     ?? 0.8;
@@ -764,6 +766,7 @@
 
   async function saveConfig() {
     const scoring = {
+      base_task:     parseFloat(document.getElementById("cfg-base").value)     || 1,
       priority_high: parseFloat(document.getElementById("cfg-priority").value) || 0,
       tag_frog:      parseFloat(document.getElementById("cfg-frog").value)     || 0,
       tag_pomo4:     parseFloat(document.getElementById("cfg-pomo4").value)    || 0,

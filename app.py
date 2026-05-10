@@ -34,6 +34,7 @@ FOCUS_SCORES = {
 }
 
 DEFAULT_SCORING = {
+    "base_task":     1.0,
     "priority_high": 0.5,
     "tag_frog":      0.8,
     "tag_pomo4":     0.8,
@@ -108,7 +109,7 @@ def kv_set(key: str, value):
 
 def task_score(task, scoring=None):
     s = scoring or DEFAULT_SCORING
-    score = 1.0
+    score = s.get("base_task", DEFAULT_SCORING["base_task"])
     breakdown = []
     if task.get("priority") == HIGH_PRIORITY:
         b = s.get("priority_high", DEFAULT_SCORING["priority_high"])
