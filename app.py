@@ -22,6 +22,7 @@ REDIRECT_URI = os.environ.get("REDIRECT_URI", "http://localhost:5000/callback")
 BASE_URL = "https://api.ticktick.com/open/v1"
 
 FROG_TAG = "🐸"
+POMODORO_TAG_2 = "2⏱️"
 POMODORO_TAG_4 = "4⏱️"
 POMODORO_TAG_6 = "6⏱️"
 POMODORO_TAG_8 = "8⏱️"
@@ -37,6 +38,7 @@ DEFAULT_SCORING = {
     "base_task":     1.0,
     "priority_high": 0.5,
     "tag_frog":      0.8,
+    "tag_pomo2":     0.3,
     "tag_pomo4":     0.8,
     "tag_pomo6":     1.2,
     "tag_pomo8":     1.6,
@@ -120,7 +122,7 @@ def task_score(task, scoring=None):
         b = s.get("tag_frog", DEFAULT_SCORING["tag_frog"])
         score += b
         breakdown.append(f"🐸 +{b}")
-    for tag, key in [(POMODORO_TAG_4, "tag_pomo4"), (POMODORO_TAG_6, "tag_pomo6"), (POMODORO_TAG_8, "tag_pomo8")]:
+    for tag, key in [(POMODORO_TAG_2, "tag_pomo2"), (POMODORO_TAG_4, "tag_pomo4"), (POMODORO_TAG_6, "tag_pomo6"), (POMODORO_TAG_8, "tag_pomo8")]:
         if tag in tags:
             b = s.get(key, DEFAULT_SCORING[key])
             score += b
