@@ -788,6 +788,13 @@
 
   function startSFCountdown(secondsLeft) {
     clearInterval(sfCountdownInterval);
+    sfCountdownInterval = null;
+    if (secondsLeft < 0) {
+      // no auto-lock
+      const el = document.getElementById("sf-countdown-value");
+      if (el) el.textContent = "manual lock only";
+      return;
+    }
     let secs = secondsLeft;
     updateCountdownDisplay(secs);
     sfCountdownInterval = setInterval(() => {
