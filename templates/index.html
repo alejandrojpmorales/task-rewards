@@ -510,13 +510,15 @@
         <div class="reward-edit-row" data-id="${r.id}">
           <input class="input-name" value="${escHtml(r.name)}" placeholder="Reward name" />
           <input class="input-cost" type="number" min="0" step="0.5" value="${r.cost}" title="Cost (pts)" />
-          <input class="input-mins" type="number" min="0" step="1" value="${r.unlock_minutes || 0}" title="SF unlock (mins, 0=none)" />
+          <select class="input-mins" title="SF unlock duration" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 6px;font-size:0.82rem;outline:none;width:72px">
+            <option value="5"  ${(r.unlock_minutes||30)===5  ? "selected":""}>5 min</option>
+            <option value="30" ${(r.unlock_minutes||30)===30 ? "selected":""}>30 min</option>
+          </select>
           <button class="btn btn-danger" style="padding:6px 10px" onclick="removeRewardRow(this)">✕</button>
         </div>`).join("");
-      // helper labels
       const hdr = document.createElement("div");
       hdr.style.cssText = "display:flex;gap:8px;font-size:0.68rem;color:var(--muted);padding:0 2px;margin-top:4px";
-      hdr.innerHTML = `<span style="flex:1">Name</span><span style="width:60px;text-align:center">pts</span><span style="width:56px;text-align:center">🔒 min</span><span style="width:36px"></span>`;
+      hdr.innerHTML = `<span style="flex:1">Name</span><span style="width:60px;text-align:center">pts</span><span style="width:72px;text-align:center">🔒 time</span><span style="width:36px"></span>`;
       list.appendChild(hdr);
       document.getElementById("edit-actions").style.display = "flex";
       document.getElementById("edit-btn").style.display = "none";
@@ -592,7 +594,10 @@
     row.innerHTML = `
       <input class="input-name" placeholder="Reward name" />
       <input class="input-cost" type="number" min="0" step="0.5" value="1" title="Cost (pts)" />
-      <input class="input-mins" type="number" min="0" step="1" value="0" title="SF unlock (mins, 0=none)" />
+      <select class="input-mins" title="SF unlock duration" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 6px;font-size:0.82rem;outline:none;width:72px">
+        <option value="5">5 min</option>
+        <option value="30" selected>30 min</option>
+      </select>
       <button class="btn btn-danger" style="padding:6px 10px" onclick="removeRewardRow(this)">✕</button>`;
     list.appendChild(row);
   }
@@ -789,12 +794,6 @@
   function startSFCountdown(secondsLeft) {
     clearInterval(sfCountdownInterval);
     sfCountdownInterval = null;
-    if (secondsLeft < 0) {
-      // no auto-lock
-      const el = document.getElementById("sf-countdown-value");
-      if (el) el.textContent = "manual lock only";
-      return;
-    }
     let secs = secondsLeft;
     updateCountdownDisplay(secs);
     sfCountdownInterval = setInterval(() => {

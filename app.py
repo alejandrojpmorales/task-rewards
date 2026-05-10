@@ -172,21 +172,17 @@ def get_secure_folder_status(wallet: dict) -> dict:
     sf = wallet.get("secure_folder") or {}
     unlock = sf.get("active_unlock")
     if not unlock:
-        return {"unlocked": False, "password": None, "expires_at": None, "seconds_left": -1, "reward_name": None}
-    expires_at_str = unlock.get("expires_at")
-    if expires_at_str:
-        expires_at = datetime.fromisoformat(expires_at_str)
-        now = datetime.now(timezone.utc)
-        seconds_left = max(0, int((expires_at - now).total_seconds()))
-        if seconds_left == 0:
-            wallet["secure_folder"]["active_unlock"] = None
-            return {"unlocked": False, "password": None, "expires_at": None, "seconds_left": -1, "reward_name": None}
-    else:
-        seconds_left = -1  # no auto-lock
+        return {"unlocked": False, "password": None, "expires_at": None, "seconds_left": 0, "reward_name": None}
+    expires_at = datetime.fromisoformat(unlock["expires_at"])
+    now = datetime.now(timezone.utc)
+    seconds_left = max(0, int((expires_at - now).total_seconds()))
+    if seconds_left == 0:
+        wallet["secure_folder"]["active_unlock"] = None
+        return {"unlocked": False, "password": None, "expires_at": None, "seconds_left": 0, "reward_name": None}
     return {
         "unlocked": True,
         "password": sf.get("password"),
-        "expires_at": expires_at_str,
+        "expires_at": unlock["expires_at"],
         "seconds_left": seconds_left,
         "reward_name": unlock.get("reward_name"),
     }
@@ -490,21 +486,18 @@ def redeem():
         return jsonify({"error": "insufficient_balance", "balance": wallet["balance"]}), 400
     wallet["balance"] = round(wallet["balance"] - reward["cost"], 1)
 
-    unlock_minutes = int(reward.get("unlock_minutes") or 0)
-    sf_status = None
-    if wallet["secure_folder"].get("password"):
-        if unlock_minutes > 0:
-            expires_at = datetime.now(timezone.utc) + timedelta(minutes=unlock_minutes)
-            wallet["secure_folder"]["active_unlock"] = {
-                "expires_at": expires_at.isoformat(),
-                "reward_name": reward["name"],
-            }
-        else:
-            wallet["secure_folder"]["active_unlock"] = {
-                "expires_at": None,
-                "reward_name": reward["name"],
-            }
-        sf_status = get_secure_folder_status(wallet)
+    # Auto-generate password if none exists yet
+    if not wallet["secure_folder"].get("password"):
+        import random, string
+        wallet["secure_folder"]["password"] = "".join(random.choices(string.ascii_letters, k=10))
+
+    unlock_minutes = int(reward.get("unlock_minutes") or 0) or 30  # default 30 min
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=unlock_minutes)
+    wallet["secure_folder"]["active_unlock"] = {
+        "expires_at": expires_at.isoformat(),
+        "reward_name": reward["name"],
+    }
+    sf_status = get_secure_folder_status(wallet)
 
     save_wallet(wallet)
     return jsonify({"balance": wallet["balance"], "redeemed": reward["name"], "secure_folder": sf_status})
