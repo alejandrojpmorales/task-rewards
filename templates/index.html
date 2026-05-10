@@ -576,10 +576,7 @@
         <div class="reward-edit-row" data-id="${r.id}">
           <input class="input-name" value="${escHtml(r.name)}" placeholder="Reward name" />
           <input class="input-cost" type="number" min="0" step="0.5" value="${r.cost}" title="Cost (pts)" />
-          <select class="input-mins" title="SF unlock duration" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 6px;font-size:0.82rem;outline:none;width:72px">
-            <option value="5"  ${(r.unlock_minutes||30)===5  ? "selected":""}>5 min</option>
-            <option value="30" ${(r.unlock_minutes||30)===30 ? "selected":""}>30 min</option>
-          </select>
+          <input class="input-mins" type="number" min="1" step="1" value="${r.unlock_minutes || 30}" title="SF unlock (minutes)" />
           <button class="btn btn-danger" style="padding:6px 10px" onclick="removeRewardRow(this)">✕</button>
         </div>`).join("");
       const hdr = document.createElement("div");
@@ -660,10 +657,7 @@
     row.innerHTML = `
       <input class="input-name" placeholder="Reward name" />
       <input class="input-cost" type="number" min="0" step="0.5" value="1" title="Cost (pts)" />
-      <select class="input-mins" title="SF unlock duration" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 6px;font-size:0.82rem;outline:none;width:72px">
-        <option value="5">5 min</option>
-        <option value="30" selected>30 min</option>
-      </select>
+      <input class="input-mins" type="number" min="1" step="1" value="30" title="SF unlock (minutes)" />
       <button class="btn btn-danger" style="padding:6px 10px" onclick="removeRewardRow(this)">✕</button>`;
     list.appendChild(row);
   }
