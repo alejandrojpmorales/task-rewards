@@ -28,21 +28,29 @@ POMODORO_TAG_6 = "6⏱️"
 POMODORO_TAG_8 = "8⏱️"
 HIGH_PRIORITY = 5
 
-FOCUS_SCORES = {
-    "Focus work":     1.0,
-    "Focus thesis":   2.0,
-    "Focus homework": 1.2,
+# Maps TickTick timer name → scoring key
+FOCUS_NAME_MAP = {
+    "Work":          "focus_work",
+    "Homework":      "focus_homework",
+    "Thesis":        "focus_thesis",
+    "LONG meeting":  "focus_long_meeting",
+    "SHORT meeting": "focus_short_meeting",
 }
 
 DEFAULT_SCORING = {
-    "base_task":     1.0,
-    "priority_high": 0.5,
-    "tag_frog":      0.8,
-    "tag_pomo2":     0.3,
-    "tag_pomo4":     0.8,
-    "tag_pomo6":     1.2,
-    "tag_pomo8":     1.6,
-    "habit":         1.0,
+    "base_task":          1.0,
+    "priority_high":      0.5,
+    "tag_frog":           0.8,
+    "tag_pomo2":          0.3,
+    "tag_pomo4":          0.8,
+    "tag_pomo6":          1.2,
+    "tag_pomo8":          1.6,
+    "habit":              1.0,
+    "focus_work":         1.0,
+    "focus_homework":     1.2,
+    "focus_thesis":       2.0,
+    "focus_long_meeting": 0.5,
+    "focus_short_meeting":0.3,
 }
 
 # Upstash Redis credentials (set in production env vars; absent = use local files)
@@ -453,9 +461,10 @@ def get_score():
         if not fid or fid in counted_focus_ids:
             continue
         name = focus_name(focus)
-        score = FOCUS_SCORES.get(name)
-        if score is None:
+        key = FOCUS_NAME_MAP.get(name)
+        if key is None:
             continue
+        score = scoring.get(key, DEFAULT_SCORING.get(key, 0))
         state["focuses"].append({
             "id": fid, "title": name,
             "score": score, "breakdown": [], "type": "focus",

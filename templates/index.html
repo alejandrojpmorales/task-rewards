@@ -493,6 +493,42 @@
   </div>
 
 
+  <div class="section-title" style="margin-bottom:16px">Focus timer scores</div>
+  <div class="card" style="margin-bottom:24px">
+    <div class="card-label" style="text-align:left;margin-bottom:12px">Points per completed focus session</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.9rem">💼 Work</span>
+        <input id="cfg-focus-work" type="number" min="0" step="0.1"
+               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.9rem">📚 Homework</span>
+        <input id="cfg-focus-homework" type="number" min="0" step="0.1"
+               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.9rem">🎓 Thesis</span>
+        <input id="cfg-focus-thesis" type="number" min="0" step="0.1"
+               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.9rem">🗓️ LONG meeting</span>
+        <input id="cfg-focus-long" type="number" min="0" step="0.1"
+               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.9rem">🗓️ SHORT meeting</span>
+        <input id="cfg-focus-short" type="number" min="0" step="0.1"
+               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="saveConfig()"
+            style="width:100%;margin-top:16px;padding:11px;text-align:center">
+      Save
+    </button>
+  </div>
+
   <div class="section-title" style="margin-bottom:16px">Samsung Secure Folder</div>
   <div class="sf-settings-card">
     <div style="font-size:0.82rem;color:var(--muted);margin-bottom:14px">
@@ -761,7 +797,12 @@
     document.getElementById("cfg-pomo4").value    = s.tag_pomo4     ?? 0.8;
     document.getElementById("cfg-pomo6").value    = s.tag_pomo6     ?? 1.2;
     document.getElementById("cfg-pomo8").value    = s.tag_pomo8     ?? 1.6;
-    document.getElementById("cfg-habit").value    = s.habit         ?? 1.0;
+    document.getElementById("cfg-habit").value         = s.habit              ?? 1.0;
+    document.getElementById("cfg-focus-work").value    = s.focus_work         ?? 1.0;
+    document.getElementById("cfg-focus-homework").value= s.focus_homework     ?? 1.2;
+    document.getElementById("cfg-focus-thesis").value  = s.focus_thesis       ?? 2.0;
+    document.getElementById("cfg-focus-long").value    = s.focus_long_meeting ?? 0.5;
+    document.getElementById("cfg-focus-short").value   = s.focus_short_meeting?? 0.3;
   }
 
   async function saveConfig() {
@@ -773,7 +814,12 @@
       tag_pomo4:     parseFloat(document.getElementById("cfg-pomo4").value)    || 0,
       tag_pomo6:     parseFloat(document.getElementById("cfg-pomo6").value)    || 0,
       tag_pomo8:     parseFloat(document.getElementById("cfg-pomo8").value)    || 0,
-      habit:         parseFloat(document.getElementById("cfg-habit").value)    || 0,
+      habit:               parseFloat(document.getElementById("cfg-habit").value)        || 0,
+      focus_work:          parseFloat(document.getElementById("cfg-focus-work").value)    || 0,
+      focus_homework:      parseFloat(document.getElementById("cfg-focus-homework").value)|| 0,
+      focus_thesis:        parseFloat(document.getElementById("cfg-focus-thesis").value)  || 0,
+      focus_long_meeting:  parseFloat(document.getElementById("cfg-focus-long").value)    || 0,
+      focus_short_meeting: parseFloat(document.getElementById("cfg-focus-short").value)   || 0,
     };
     const res = await fetch("/api/config", {
       method: "PUT",
