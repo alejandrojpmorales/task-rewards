@@ -181,12 +181,20 @@ def load_wallet() -> dict:
         w.setdefault("punishments", DEFAULT_PUNISHMENTS)
         w.setdefault("last_activity_at", None)
         w.setdefault("inactivity_punished_at", None)
+        w.setdefault("streak", 0)
+        w.setdefault("last_active_date", None)
+        w.setdefault("daily_goal", 8.0)
+        w.setdefault("balance_cap", None)
+        w.setdefault("active_multiplier", 1.0)
+        w.setdefault("transactions", [])
         return w
     return {"balance": 0.0, "credited_date": "", "credited_today": 0.0,
             "rewards": DEFAULT_REWARDS, "punishments": DEFAULT_PUNISHMENTS,
             "scoring": DEFAULT_SCORING.copy(),
             "secure_folder": {"password": None, "active_unlock": None},
-            "last_activity_at": None, "inactivity_punished_at": None}
+            "last_activity_at": None, "inactivity_punished_at": None,
+            "streak": 0, "last_active_date": None, "daily_goal": 8.0,
+            "balance_cap": None, "active_multiplier": 1.0, "transactions": []}
 
 
 def save_wallet(wallet: dict):
@@ -201,6 +209,47 @@ def credit_points(wallet: dict, today: str, today_total: float):
     if today_total > prev:
         wallet["balance"] = round(wallet.get("balance", 0.0) + (today_total - prev), 1)
         wallet["credited_today"] = today_total
+
+
+# ---------------------------------------------------------------------------
+# Streak & transactions
+# ---------------------------------------------------------------------------
+
+def update_streak(wallet: dict, today: str, had_activity: bool) -> int:
+    """Update streak counter. Returns bonus points awarded (0 normally)."""
+    yesterday = (date.fromisoformat(today) - timedelta(days=1)).isoformat()
+    last = wallet.get("last_active_date")
+    bonus = 0
+    if had_activity:
+        if last == today:
+            pass  # already counted this session
+        elif last == yesterday:
+            wallet["streak"] = wallet.get("streak", 0) + 1
+        else:
+            wallet["streak"] = 1
+        wallet["last_active_date"] = today
+        streak = wallet["streak"]
+        if streak > 0 and streak % 7 == 0:
+            bonus = 5 if streak % 30 == 0 else 2
+            wallet["balance"] = round(wallet.get("balance", 0) + bonus, 1)
+            add_transaction(wallet, "streak_bonus",
+                            f"{'30' if streak % 30 == 0 else '7'}-day streak bonus 🔥", bonus)
+    else:
+        if last and last < yesterday:
+            wallet["streak"] = 0
+    return bonus
+
+
+def add_transaction(wallet: dict, type_: str, description: str, amount: float):
+    txns = wallet.setdefault("transactions", [])
+    txns.append({
+        "ts":      datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"),
+        "type":    type_,
+        "desc":    description,
+        "amount":  round(amount, 1),
+        "balance": round(wallet.get("balance", 0), 1),
+    })
+    wallet["transactions"] = txns[-100:]
 
 
 # ---------------------------------------------------------------------------
@@ -224,7 +273,9 @@ def check_inactivity_punishment(wallet: dict, state: dict) -> bool:
         return False  # already wiped for this inactivity gap
     wallet["balance"] = 0.0
     wallet["credited_today"] = 0.0
+    wallet["streak"] = 0
     wallet["inactivity_punished_at"] = now.isoformat()
+    add_transaction(wallet, "inactivity", "24h inactivity — balance wiped 💀", 0)
     return True
 
 
@@ -482,12 +533,27 @@ def get_score():
     save_state(state)
 
     all_items = state["tasks"] + state["habits"] + state["focuses"]
-    today_total = round(sum(i["score"] for i in all_items), 1)
+    multiplier = wallet.get("active_multiplier", 1.0)
+    raw_total = round(sum(i["score"] for i in all_items), 1)
+    today_total = round(raw_total * multiplier, 1)
 
     credit_points(wallet, today, today_total)
+
+    streak_bonus = update_streak(wallet, today, today_total > 0)
+
     if today_total > 0:
         wallet["last_activity_at"] = datetime.now(timezone.utc).isoformat()
+
+    cap = wallet.get("balance_cap")
+    if cap and wallet["balance"] > cap:
+        wallet["balance"] = float(cap)
+
     save_wallet(wallet)
+
+    hours_since = None
+    if wallet.get("last_activity_at"):
+        diff = (datetime.now(timezone.utc) - datetime.fromisoformat(wallet["last_activity_at"])).total_seconds()
+        hours_since = round(diff / 3600, 1)
 
     return jsonify({
         "date": today,
@@ -497,6 +563,11 @@ def get_score():
         "focus_count": len(state["focuses"]),
         "items": sorted(all_items, key=lambda i: i["score"], reverse=True),
         "balance": wallet["balance"],
+        "streak": wallet.get("streak", 0),
+        "streak_bonus": streak_bonus,
+        "daily_goal": wallet.get("daily_goal", 8.0),
+        "active_multiplier": multiplier,
+        "hours_since_activity": hours_since,
         "inactivity_punished": inactivity_punished,
         "errors": errors,
     })
@@ -522,7 +593,12 @@ def get_config():
     if "access_token" not in session:
         return jsonify({"error": "not_authenticated"}), 401
     wallet = load_wallet()
-    return jsonify({"scoring": wallet.get("scoring", DEFAULT_SCORING)})
+    return jsonify({
+        "scoring": wallet.get("scoring", DEFAULT_SCORING),
+        "daily_goal": wallet.get("daily_goal", 8.0),
+        "balance_cap": wallet.get("balance_cap"),
+        "active_multiplier": wallet.get("active_multiplier", 1.0),
+    })
 
 
 @app.route("/api/config", methods=["PUT"])
@@ -539,8 +615,26 @@ def update_config():
             clean[key] = default
     wallet = load_wallet()
     wallet["scoring"] = clean
+    try:
+        wallet["daily_goal"] = max(0.0, float(data.get("daily_goal", wallet.get("daily_goal", 8.0))))
+    except (ValueError, TypeError):
+        pass
+    try:
+        cap = data.get("balance_cap")
+        wallet["balance_cap"] = max(0.0, float(cap)) if cap not in (None, "", 0) else None
+    except (ValueError, TypeError):
+        pass
+    try:
+        wallet["active_multiplier"] = max(1.0, float(data.get("active_multiplier", 1.0)))
+    except (ValueError, TypeError):
+        pass
     save_wallet(wallet)
-    return jsonify({"scoring": clean})
+    return jsonify({
+        "scoring": clean,
+        "daily_goal": wallet["daily_goal"],
+        "balance_cap": wallet["balance_cap"],
+        "active_multiplier": wallet["active_multiplier"],
+    })
 
 
 @app.route("/api/redeem", methods=["POST"])
@@ -555,17 +649,17 @@ def redeem():
     if wallet["balance"] < reward["cost"]:
         return jsonify({"error": "insufficient_balance", "balance": wallet["balance"]}), 400
     wallet["balance"] = round(wallet["balance"] - reward["cost"], 1)
+    add_transaction(wallet, "redeem", f"Redeemed: {reward['name']}", -reward["cost"])
 
-    if not wallet["secure_folder"].get("password"):
-        return jsonify({"error": "no_password_set", "balance": wallet["balance"], "redeemed": reward["name"], "secure_folder": None}), 200
-
-    unlock_minutes = int(reward.get("unlock_minutes") or 0) or 30  # default 30 min
-    expires_at = datetime.now(timezone.utc) + timedelta(minutes=unlock_minutes)
-    wallet["secure_folder"]["active_unlock"] = {
-        "expires_at": expires_at.isoformat(),
-        "reward_name": reward["name"],
-    }
-    sf_status = get_secure_folder_status(wallet)
+    sf_status = None
+    if wallet["secure_folder"].get("password"):
+        unlock_minutes = int(reward.get("unlock_minutes") or 0) or 30
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=unlock_minutes)
+        wallet["secure_folder"]["active_unlock"] = {
+            "expires_at": expires_at.isoformat(),
+            "reward_name": reward["name"],
+        }
+        sf_status = get_secure_folder_status(wallet)
 
     save_wallet(wallet)
     return jsonify({"balance": wallet["balance"], "redeemed": reward["name"], "secure_folder": sf_status})
@@ -589,6 +683,7 @@ def punish():
     if not punishment:
         return jsonify({"error": "punishment not found"}), 404
     wallet["balance"] = max(0.0, round(wallet["balance"] - punishment["cost"], 1))
+    add_transaction(wallet, "punish", f"Punishment: {punishment['name']}", -punishment["cost"])
     save_wallet(wallet)
     return jsonify({"balance": wallet["balance"], "applied": punishment["name"]})
 
@@ -695,6 +790,38 @@ def lock_sf():
     wallet["secure_folder"]["active_unlock"] = None
     save_wallet(wallet)
     return jsonify({"ok": True, "unlocked": False})
+
+
+# ---------------------------------------------------------------------------
+# History & transactions
+# ---------------------------------------------------------------------------
+
+@app.route("/api/history")
+def get_history():
+    if "access_token" not in session:
+        return jsonify({"error": "not_authenticated"}), 401
+    today = date.today()
+    days = []
+    for i in range(14):
+        d = (today - timedelta(days=i)).isoformat()
+        state = kv_get(f"state:{d}")
+        if isinstance(state, dict) and state.get("date") == d:
+            all_items = state.get("tasks", []) + state.get("habits", []) + state.get("focuses", [])
+            days.append({
+                "date": d,
+                "total": round(sum(x["score"] for x in all_items), 1),
+                "task_count":  len(state.get("tasks", [])),
+                "habit_count": len(state.get("habits", [])),
+                "focus_count": len(state.get("focuses", [])),
+            })
+        else:
+            days.append({"date": d, "total": 0, "task_count": 0, "habit_count": 0, "focus_count": 0})
+    wallet = load_wallet()
+    return jsonify({
+        "days": days,
+        "streak": wallet.get("streak", 0),
+        "transactions": list(reversed(wallet.get("transactions", [])[:30])),
+    })
 
 
 if __name__ == "__main__":

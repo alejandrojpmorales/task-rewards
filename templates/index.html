@@ -6,53 +6,23 @@
   <title>Task Rewards</title>
   <style>
     :root {
-      --bg: #0f0f13;
-      --surface: #1a1a24;
-      --surface2: #22222f;
-      --border: #2e2e3e;
-      --accent: #7c6af7;
-      --accent2: #5eead4;
-      --text: #e8e8f0;
-      --muted: #888899;
-      --gold: #f5c842;
-      --green: #4ade80;
-      --red: #f87171;
+      --bg: #0f0f13; --surface: #1a1a24; --surface2: #22222f; --border: #2e2e3e;
+      --accent: #7c6af7; --accent2: #5eead4; --text: #e8e8f0; --muted: #888899;
+      --gold: #f5c842; --green: #4ade80; --red: #f87171; --orange: #fb923c;
     }
-
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      padding: 16px;
-      padding-bottom: 48px;
-      max-width: 480px;
-      margin: 0 auto;
+      background: var(--bg); color: var(--text); min-height: 100vh;
+      padding: 16px; padding-bottom: 48px; max-width: 480px; margin: 0 auto;
     }
-
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-      padding-top: 8px;
-    }
-
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-top: 8px; }
     header h1 { font-size: 1.1rem; font-weight: 600; color: var(--accent); }
 
     .btn {
-      background: var(--surface2);
-      color: var(--muted);
-      border: 1px solid var(--border);
-      padding: 7px 14px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 0.82rem;
-      text-decoration: none;
-      transition: color 0.15s, border-color 0.15s;
-      display: inline-block;
+      background: var(--surface2); color: var(--muted); border: 1px solid var(--border);
+      padding: 7px 14px; border-radius: 8px; cursor: pointer; font-size: 0.82rem;
+      text-decoration: none; transition: color 0.15s, border-color 0.15s; display: inline-block;
     }
     .btn:hover { color: var(--text); border-color: var(--accent); }
     .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
@@ -60,7 +30,6 @@
     .btn-danger { border-color: rgba(248,113,113,0.4); color: var(--red); }
     .btn-danger:hover { border-color: var(--red); }
 
-    /* Login */
     .login-screen {
       display: flex; flex-direction: column; align-items: center;
       justify-content: center; min-height: 70vh; gap: 16px; text-align: center;
@@ -68,47 +37,39 @@
     .login-screen h2 { font-size: 1.6rem; font-weight: 700; }
     .login-screen p { color: var(--muted); font-size: 0.95rem; max-width: 280px; }
 
-    /* Cards */
-    .cards-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 18px 16px;
-      text-align: center;
-    }
-
-    .card-label {
-      font-size: 0.72rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-
-    .card-value {
-      font-size: 2.4rem;
-      font-weight: 800;
-      line-height: 1;
-    }
-
-    .card-value.earned {
-      background: linear-gradient(135deg, #a78bfa, #5eead4);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-    }
-
+    .cards-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 18px 16px; text-align: center; }
+    .card-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 6px; }
+    .card-value { font-size: 2.4rem; font-weight: 800; line-height: 1; }
+    .card-value.earned { background: linear-gradient(135deg, #a78bfa, #5eead4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
     .card-value.balance { color: var(--gold); }
-
     .card-sub { color: var(--muted); font-size: 0.75rem; margin-top: 4px; }
 
-    .date-badge {
-      display: inline-block;
-      background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 20px; padding: 4px 14px;
-      font-size: 0.78rem; color: var(--muted); margin-bottom: 16px;
+    /* Streak & multiplier row */
+    .stat-row { display: flex; gap: 8px; margin-bottom: 12px; }
+    .stat-chip {
+      display: flex; align-items: center; gap: 5px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 6px 14px; font-size: 0.82rem;
     }
+    .stat-chip.streak { border-color: rgba(251,146,60,0.4); color: var(--orange); }
+    .stat-chip.multiplier { border-color: rgba(124,106,247,0.5); color: var(--accent); background: rgba(124,106,247,0.08); }
 
+    /* Progress bars */
+    .progress-wrap { margin-bottom: 14px; }
+    .progress-label { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--muted); margin-bottom: 5px; }
+    .progress-track { background: var(--surface2); border-radius: 99px; height: 7px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 99px; transition: width 0.4s ease; }
+    .progress-fill.goal { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+    .progress-fill.reward { background: linear-gradient(90deg, var(--gold), #fb923c); }
+
+    .next-reward-hint { font-size: 0.75rem; color: var(--muted); text-align: right; margin-bottom: 16px; }
+    .next-reward-hint strong { color: var(--gold); }
+
+    .date-badge {
+      display: inline-block; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 20px; padding: 4px 14px; font-size: 0.78rem; color: var(--muted); margin-bottom: 16px;
+    }
     .refresh-btn {
       width: 100%; display: flex; align-items: center; justify-content: center;
       gap: 8px; padding: 11px; border-radius: 12px; font-size: 0.9rem;
@@ -117,208 +78,167 @@
     }
     .refresh-btn:hover { border-color: var(--accent); }
     .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
     .spin { animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Section */
-    .section-header {
-      display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
-    }
-    .section-title {
-      font-size: 0.72rem; text-transform: uppercase;
-      letter-spacing: 0.1em; color: var(--muted);
-    }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .section-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
 
-    /* Rewards */
     .rewards-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
-
     .reward-item {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 14px; padding: 14px 16px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px;
       display: flex; justify-content: space-between; align-items: center;
-      gap: 12px; cursor: pointer; transition: border-color 0.15s, background 0.15s;
-      user-select: none;
+      gap: 12px; cursor: pointer; transition: border-color 0.15s, background 0.15s; user-select: none;
     }
     .reward-item:hover { border-color: var(--gold); }
     .reward-item:active { background: var(--surface2); }
     .reward-item.insufficient { opacity: 0.45; cursor: not-allowed; }
     .reward-item.insufficient:hover { border-color: var(--border); }
     .reward-item.redeemed-flash { border-color: var(--green); background: rgba(74,222,128,0.06); }
-
     .reward-name { font-size: 0.9rem; font-weight: 500; flex: 1; }
-
     .reward-cost {
       background: rgba(245,200,66,0.12); border: 1px solid rgba(245,200,66,0.3);
       color: var(--gold); border-radius: 8px; padding: 4px 10px;
       font-size: 0.82rem; font-weight: 700; white-space: nowrap; flex-shrink: 0;
     }
 
-    /* Edit mode rewards */
     .reward-edit-row {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 14px; padding: 12px 14px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px;
       display: flex; gap: 8px; align-items: center;
     }
-
-    .reward-edit-row input {
+    .reward-edit-row input, .reward-edit-row select {
       background: var(--surface2); border: 1px solid var(--border);
       color: var(--text); border-radius: 8px; padding: 7px 10px; font-size: 0.85rem;
       outline: none; transition: border-color 0.15s;
     }
-    .reward-edit-row input:focus { border-color: var(--accent); }
+    .reward-edit-row input:focus, .reward-edit-row select:focus { border-color: var(--accent); }
     .reward-edit-row .input-name { flex: 1; }
     .reward-edit-row .input-cost { width: 60px; text-align: center; }
     .reward-edit-row .input-mins { width: 56px; text-align: center; }
 
-    .add-reward-btn {
-      width: 100%; padding: 10px; border-radius: 12px; border: 1px dashed var(--border);
-      background: transparent; color: var(--muted); cursor: pointer; font-size: 0.85rem;
-      margin-top: 4px; transition: border-color 0.15s, color 0.15s;
-    }
-    .add-reward-btn:hover { border-color: var(--accent); color: var(--text); }
-
     .edit-actions { display: flex; gap: 8px; margin-top: 10px; }
     .edit-actions .btn { flex: 1; text-align: center; padding: 10px; }
 
-    /* Task list */
     .task-list { display: flex; flex-direction: column; gap: 8px; }
-
     .task-item {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 14px; padding: 13px 16px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 13px 16px;
       display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
     }
-
     .task-info { flex: 1; min-width: 0; }
-    .task-title {
-      font-size: 0.88rem; font-weight: 500; margin-bottom: 5px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
+    .task-title { font-size: 0.88rem; font-weight: 500; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .task-badges { display: flex; flex-wrap: wrap; gap: 4px; }
-
-    .badge {
-      font-size: 0.68rem; padding: 2px 8px; border-radius: 20px; border: 1px solid transparent;
-    }
+    .badge { font-size: 0.68rem; padding: 2px 8px; border-radius: 20px; border: 1px solid transparent; }
     .badge-priority { background: rgba(245,200,66,0.1); border-color: rgba(245,200,66,0.3); color: var(--gold); }
     .badge-frog     { background: rgba(74,222,128,0.1); border-color: rgba(74,222,128,0.3); color: var(--green); }
     .badge-pomo     { background: rgba(94,234,212,0.1); border-color: rgba(94,234,212,0.3); color: var(--accent2); }
     .badge-habit    { background: rgba(167,139,250,0.1); border-color: rgba(167,139,250,0.3); color: #a78bfa; }
     .badge-focus    { background: rgba(251,146,60,0.1);  border-color: rgba(251,146,60,0.3);  color: #fb923c; }
-
     .task-score { font-size: 1.05rem; font-weight: 700; color: var(--accent); white-space: nowrap; flex-shrink: 0; }
 
     .empty-state { text-align: center; padding: 32px 20px; color: var(--muted); }
     .empty-state .emoji { font-size: 2.2rem; margin-bottom: 10px; }
     .empty-state p { font-size: 0.88rem; }
 
-    .error-msg {
-      background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
-      color: var(--red); border-radius: 12px; padding: 12px 14px; font-size: 0.82rem; margin-bottom: 14px;
-    }
+    .error-msg { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: var(--red); border-radius: 12px; padding: 12px 14px; font-size: 0.82rem; margin-bottom: 14px; }
 
     .toast {
       position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-      background: var(--surface2); border: 1px solid var(--border);
-      color: var(--text); padding: 10px 20px; border-radius: 12px;
-      font-size: 0.85rem; opacity: 0; transition: opacity 0.2s;
-      pointer-events: none; white-space: nowrap; z-index: 100;
+      background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+      padding: 10px 20px; border-radius: 12px; font-size: 0.85rem;
+      opacity: 0; transition: opacity 0.2s; pointer-events: none; white-space: nowrap; z-index: 100;
     }
     .toast.show { opacity: 1; }
 
-    /* Tabs */
-    .tab-bar {
-      display: flex; gap: 4px;
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 12px; padding: 4px; margin-bottom: 20px;
-    }
-    .tab-btn {
-      flex: 1; padding: 8px; border-radius: 8px; border: none;
-      background: transparent; color: var(--muted); font-size: 0.88rem;
-      cursor: pointer; transition: background 0.15s, color 0.15s; font-weight: 500;
-    }
+    .tab-bar { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 4px; margin-bottom: 20px; }
+    .tab-btn { flex: 1; padding: 8px; border-radius: 8px; border: none; background: transparent; color: var(--muted); font-size: 0.82rem; cursor: pointer; transition: background 0.15s, color 0.15s; font-weight: 500; }
     .tab-btn.active { background: var(--surface2); color: var(--text); }
 
-    /* Pending task score pill */
-    .pending-score {
-      background: rgba(124,106,247,0.12); border: 1px solid rgba(124,106,247,0.3);
-      color: var(--accent); border-radius: 8px; padding: 4px 10px;
-      font-size: 0.82rem; font-weight: 700; white-space: nowrap; flex-shrink: 0;
-    }
-    .pending-project {
-      font-size: 0.72rem; color: var(--muted); margin-top: 3px;
-    }
+    .pending-score { background: rgba(124,106,247,0.12); border: 1px solid rgba(124,106,247,0.3); color: var(--accent); border-radius: 8px; padding: 4px 10px; font-size: 0.82rem; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+    .pending-project { font-size: 0.72rem; color: var(--muted); margin-top: 3px; }
 
-    /* Inactivity warning */
-    .inactivity-banner {
-      background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.4);
+    /* Banners */
+    .banner {
       border-radius: 14px; padding: 14px 16px; margin-bottom: 16px;
       display: flex; align-items: center; gap: 10px;
     }
-    .inactivity-banner .icon { font-size: 1.4rem; flex-shrink: 0; }
-    .inactivity-banner .msg { font-size: 0.85rem; color: var(--red); }
-    .inactivity-banner .msg strong { display: block; font-size: 0.95rem; margin-bottom: 2px; }
+    .banner.danger { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.4); }
+    .banner.warning { background: rgba(251,146,60,0.1); border: 1px solid rgba(251,146,60,0.4); }
+    .banner.success { background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.3); }
+    .banner .icon { font-size: 1.4rem; flex-shrink: 0; }
+    .banner .msg { font-size: 0.85rem; }
+    .banner.danger .msg { color: var(--red); }
+    .banner.warning .msg { color: var(--orange); }
+    .banner.success .msg { color: var(--green); }
+    .banner .msg strong { display: block; font-size: 0.95rem; margin-bottom: 2px; }
 
-    /* Punishment buttons */
+    /* Punishments */
     .punish-item {
       background: rgba(248,113,113,0.06); border: 1px solid rgba(248,113,113,0.25);
       border-radius: 14px; padding: 14px 16px;
       display: flex; justify-content: space-between; align-items: center;
-      gap: 12px; cursor: pointer; transition: border-color 0.15s, background 0.15s;
-      user-select: none;
+      gap: 12px; cursor: pointer; transition: border-color 0.15s, background 0.15s; user-select: none;
     }
     .punish-item:hover { border-color: var(--red); background: rgba(248,113,113,0.1); }
-    .punish-item:active { background: rgba(248,113,113,0.16); }
-    .punish-item .reward-name { font-size: 0.9rem; font-weight: 500; flex: 1; color: var(--text); }
-    .punish-cost {
-      background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3);
-      color: var(--red); border-radius: 8px; padding: 4px 10px;
-      font-size: 0.82rem; font-weight: 700; white-space: nowrap; flex-shrink: 0;
-    }
+    .punish-item .reward-name { color: var(--text); }
+    .punish-cost { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3); color: var(--red); border-radius: 8px; padding: 4px 10px; font-size: 0.82rem; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
 
-    /* Secure Folder unlock card */
-    .sf-card {
-      background: linear-gradient(135deg, rgba(124,106,247,0.15), rgba(94,234,212,0.1));
-      border: 1px solid rgba(124,106,247,0.4);
-      border-radius: 18px; padding: 18px 16px; margin-bottom: 16px;
-    }
-    .sf-card-header {
-      display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
-    }
+    /* Secure Folder */
+    .sf-card { background: linear-gradient(135deg, rgba(124,106,247,0.15), rgba(94,234,212,0.1)); border: 1px solid rgba(124,106,247,0.4); border-radius: 18px; padding: 18px 16px; margin-bottom: 16px; }
+    .sf-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .sf-card-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); }
     .sf-card-reward { font-size: 0.78rem; color: var(--muted); }
-    .sf-password-display {
-      background: var(--bg); border: 1px solid rgba(124,106,247,0.4);
-      border-radius: 12px; padding: 14px; text-align: center; margin-bottom: 12px;
-    }
-    .sf-password-value {
-      font-size: 2rem; font-weight: 800; letter-spacing: 0.15em;
-      font-family: monospace; color: var(--text);
-    }
-    .sf-countdown {
-      font-size: 0.78rem; color: var(--muted); margin-top: 6px;
-    }
+    .sf-password-display { background: var(--bg); border: 1px solid rgba(124,106,247,0.4); border-radius: 12px; padding: 14px; text-align: center; margin-bottom: 12px; }
+    .sf-password-value { font-size: 2rem; font-weight: 800; letter-spacing: 0.15em; font-family: monospace; color: var(--text); }
+    .sf-countdown { font-size: 0.78rem; color: var(--muted); margin-top: 6px; }
     .sf-countdown strong { color: var(--accent2); }
     .sf-actions { display: flex; gap: 8px; }
     .sf-actions .btn { flex: 1; text-align: center; padding: 10px; }
+    .unlock-badge { font-size: 0.68rem; background: rgba(124,106,247,0.12); border: 1px solid rgba(124,106,247,0.3); color: var(--accent); border-radius: 6px; padding: 2px 6px; margin-left: 6px; }
 
-    /* reward unlock badge */
-    .unlock-badge {
-      font-size: 0.68rem; background: rgba(124,106,247,0.12);
-      border: 1px solid rgba(124,106,247,0.3); color: var(--accent);
-      border-radius: 6px; padding: 2px 6px; margin-left: 6px;
-    }
-
-    /* SF settings */
+    /* SF Settings */
     .sf-settings-card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 18px 16px; margin-bottom: 12px; }
     .sf-settings-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
     .sf-settings-row:last-child { margin-bottom: 0; }
-    .sf-input {
-      flex: 1; background: var(--surface2); border: 1px solid var(--border);
-      color: var(--text); border-radius: 8px; padding: 8px 12px; font-size: 0.9rem;
-      outline: none; transition: border-color 0.15s;
-    }
+    .sf-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 8px 12px; font-size: 0.9rem; outline: none; transition: border-color 0.15s; }
     .sf-input:focus { border-color: var(--accent); }
+
+    /* Confirmation modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .modal-box { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 24px; max-width: 320px; width: 100%; }
+    .modal-title { font-size: 1rem; font-weight: 700; margin-bottom: 8px; text-align: center; }
+    .modal-body { font-size: 0.88rem; color: var(--muted); text-align: center; margin-bottom: 20px; }
+    .modal-actions { display: flex; gap: 10px; }
+    .modal-actions .btn { flex: 1; text-align: center; padding: 12px; }
+
+    /* History tab */
+    .history-day {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+      padding: 12px 16px; margin-bottom: 8px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .history-day .hdate { font-size: 0.78rem; color: var(--muted); width: 80px; flex-shrink: 0; }
+    .history-day .hbar-wrap { flex: 1; }
+    .history-day .hbar-track { background: var(--surface2); border-radius: 99px; height: 6px; }
+    .history-day .hbar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.4s; }
+    .history-day .hscore { font-size: 0.9rem; font-weight: 700; color: var(--accent); width: 36px; text-align: right; flex-shrink: 0; }
+    .history-day.today-row { border-color: rgba(124,106,247,0.4); }
+    .history-day.zero-row { opacity: 0.4; }
+
+    .txn-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .txn-item:last-child { border-bottom: none; }
+    .txn-desc { font-size: 0.82rem; flex: 1; }
+    .txn-time { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+    .txn-amount { font-size: 0.9rem; font-weight: 700; white-space: nowrap; margin-left: 12px; }
+    .txn-amount.pos { color: var(--green); }
+    .txn-amount.neg { color: var(--red); }
+    .txn-amount.neu { color: var(--muted); }
+
+    /* Settings shared input style */
+    .cfg-input { width: 80px; background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 6px 10px; font-size: 0.9rem; text-align: center; outline: none; }
+    .cfg-input:focus { border-color: var(--accent); }
+    .cfg-row { display: flex; justify-content: space-between; align-items: center; }
+    .cfg-label { font-size: 0.9rem; }
+    .cfg-sub { font-size: 0.75rem; color: var(--muted); }
   </style>
 </head>
 <body>
@@ -339,15 +259,52 @@
 
 <div id="error" class="error-msg" style="display:none"></div>
 
-<!-- Tab bar -->
-<div class="tab-bar">
-  <button class="tab-btn active" id="tab-today" onclick="switchTab('today')">⭐ Today</button>
-  <button class="tab-btn" id="tab-tasks" onclick="switchTab('tasks')">📋 Tasks</button>
-  <button class="tab-btn" id="tab-settings" onclick="switchTab('settings')">⚙️</button>
+<!-- Confirmation modal -->
+<div id="confirm-modal" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-title" id="confirm-title"></div>
+    <div class="modal-body" id="confirm-body"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="confirmCancel()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmOk()">Confirm</button>
+    </div>
+  </div>
 </div>
 
-<!-- TODAY TAB -->
+<!-- Tab bar -->
+<div class="tab-bar">
+  <button class="tab-btn active" id="tab-today"    onclick="switchTab('today')">⭐ Today</button>
+  <button class="tab-btn"        id="tab-tasks"    onclick="switchTab('tasks')">📋 Tasks</button>
+  <button class="tab-btn"        id="tab-history"  onclick="switchTab('history')">📅 History</button>
+  <button class="tab-btn"        id="tab-settings" onclick="switchTab('settings')">⚙️</button>
+</div>
+
+<!-- ═══════════════ TODAY TAB ═══════════════ -->
 <div id="panel-today">
+
+<!-- Inactivity punishment banner -->
+<div id="inactivity-banner" class="banner danger" style="display:none">
+  <div class="icon">💀</div>
+  <div class="msg"><strong>All points wiped!</strong>No activity in the last 24 hours.</div>
+</div>
+
+<!-- 20h inactivity warning -->
+<div id="warning-banner" class="banner warning" style="display:none">
+  <div class="icon">⚠️</div>
+  <div class="msg" id="warning-msg"><strong>Inactivity warning</strong>You're close to losing all your points!</div>
+</div>
+
+<!-- Weekly summary (shown on Mondays) -->
+<div id="weekly-banner" class="banner success" style="display:none">
+  <div class="icon">📊</div>
+  <div class="msg" id="weekly-msg"></div>
+</div>
+
+<!-- Streak + multiplier -->
+<div class="stat-row">
+  <div class="stat-chip streak" id="streak-chip">🔥 0 day streak</div>
+  <div class="stat-chip multiplier" id="multiplier-chip" style="display:none">⚡ 2× multiplier</div>
+</div>
 
 <!-- Score + Balance -->
 <div class="cards-row">
@@ -359,7 +316,29 @@
   <div class="card">
     <div class="card-label">Balance</div>
     <div class="card-value balance" id="balance">—</div>
-    <div class="card-sub">points</div>
+    <div class="card-sub" id="balance-cap-label">points</div>
+  </div>
+</div>
+
+<!-- Daily goal progress -->
+<div class="progress-wrap" id="goal-wrap">
+  <div class="progress-label">
+    <span>Daily goal</span>
+    <span id="goal-label">0 / 8 pts</span>
+  </div>
+  <div class="progress-track">
+    <div class="progress-fill goal" id="goal-bar" style="width:0%"></div>
+  </div>
+</div>
+
+<!-- Next reward hint -->
+<div class="progress-wrap" id="next-reward-wrap" style="display:none">
+  <div class="progress-label">
+    <span id="next-reward-label">Next reward</span>
+    <span id="next-reward-pts"></span>
+  </div>
+  <div class="progress-track">
+    <div class="progress-fill reward" id="next-reward-bar" style="width:0%"></div>
   </div>
 </div>
 
@@ -369,16 +348,7 @@
   <span id="refresh-icon">↻</span> Refresh
 </button>
 
-<!-- Inactivity punishment banner -->
-<div id="inactivity-banner" class="inactivity-banner" style="display:none">
-  <div class="icon">💀</div>
-  <div class="msg">
-    <strong>All points wiped!</strong>
-    No activity detected in the last 24 hours.
-  </div>
-</div>
-
-<!-- Secure Folder unlock reveal (shown only when active) -->
+<!-- Secure Folder unlock reveal -->
 <div id="sf-reveal-card" class="sf-card" style="display:none">
   <div class="sf-card-header">
     <div class="sf-card-label">🔓 Secure Folder Unlocked</div>
@@ -399,7 +369,6 @@
   <div class="section-title">Rewards</div>
   <button class="btn" id="edit-btn" onclick="toggleEdit()">Edit</button>
 </div>
-
 <div class="rewards-list" id="rewards-list"></div>
 <div id="edit-actions" style="display:none" class="edit-actions">
   <button class="btn" onclick="addRewardRow()">+ Add</button>
@@ -419,7 +388,7 @@
   <button class="btn btn-danger" onclick="cancelPunishEdit()">Cancel</button>
 </div>
 
-<!-- Completed items -->
+<!-- Completed today -->
 <div class="section-header" style="margin-top:24px">
   <div class="section-title">Completed today</div>
 </div>
@@ -427,7 +396,7 @@
 
 </div><!-- end panel-today -->
 
-<!-- TASKS TAB -->
+<!-- ═══════════════ TASKS TAB ═══════════════ -->
 <div id="panel-tasks" style="display:none">
   <button class="refresh-btn" id="pending-btn" onclick="loadPending()">
     <span id="pending-icon">↻</span> Refresh tasks
@@ -436,117 +405,74 @@
   <div class="task-list" id="pending-list"></div>
 </div>
 
-<!-- SETTINGS TAB -->
-<div id="panel-settings" style="display:none">
-  <div class="section-title" style="margin-bottom:16px">Scoring rules</div>
+<!-- ═══════════════ HISTORY TAB ═══════════════ -->
+<div id="panel-history" style="display:none">
 
-  <div class="card" style="margin-bottom:12px">
-    <div class="card-label" style="text-align:left;margin-bottom:12px">Bonus points per tag / priority</div>
+  <div id="streak-summary" style="margin-bottom:20px"></div>
 
-    <div style="display:flex;flex-direction:column;gap:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:0.9rem">📝 Base task score</span>
-        <input id="cfg-base" type="number" min="0" step="0.1"
-               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:0.9rem">⚡ High priority</span>
-        <input id="cfg-priority" type="number" min="0" step="0.1"
-               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:0.9rem">🐸 Frog tag</span>
-        <input id="cfg-frog" type="number" min="0" step="0.1"
-               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:0.9rem">2⏱️ Pomo tag <span style="font-size:0.75rem;color:var(--muted)">(1–2h)</span></span>
-        <input id="cfg-pomo2" type="number" min="0" step="0.1"
-               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:0.9rem">4⏱️ Pomo tag <span style="font-size:0.75rem;color:var(--muted)">(3–4h)</span></span>
-        <input id="cfg-pomo4" type="number" min="0" step="0.1"
-               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:0.9rem">6⏱️ Pomo tag <span style="font-size:0.75rem;color:var(--muted)">(4–6h)</span></span>
-        <input id="cfg-pomo6" type="number" min="0" step="0.1"
-               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:0.9rem">8⏱️ Pomo tag <span style="font-size:0.75rem;color:var(--muted)">(6–8h)</span></span>
-        <input id="cfg-pomo8" type="number" min="0" step="0.1"
-               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:0.9rem">✅ Habit check-in</span>
-        <input id="cfg-habit" type="number" min="0" step="0.1"
-               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
-      </div>
-    </div>
+  <div class="section-title" style="margin-bottom:10px">Last 14 days</div>
+  <div id="history-list"></div>
 
-    <button class="btn btn-primary" onclick="saveConfig()"
-            style="width:100%;margin-top:16px;padding:11px;text-align:center">
-      Save
-    </button>
+  <div class="section-header" style="margin-top:24px;margin-bottom:10px">
+    <div class="section-title">Recent transactions</div>
   </div>
+  <div class="card" id="txn-list" style="padding:8px 16px"></div>
 
+</div>
+
+<!-- ═══════════════ SETTINGS TAB ═══════════════ -->
+<div id="panel-settings" style="display:none">
+
+  <div class="section-title" style="margin-bottom:16px">Scoring rules</div>
+  <div class="card" style="margin-bottom:24px">
+    <div class="card-label" style="text-align:left;margin-bottom:12px">Bonus points per tag / priority</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="cfg-row"><span class="cfg-label">📝 Base task score</span><input id="cfg-base" type="number" min="0" step="0.1" class="cfg-input" /></div>
+      <div class="cfg-row"><span class="cfg-label">⚡ High priority</span><input id="cfg-priority" type="number" min="0" step="0.1" class="cfg-input" /></div>
+      <div class="cfg-row"><span class="cfg-label">🐸 Frog tag</span><input id="cfg-frog" type="number" min="0" step="0.1" class="cfg-input" /></div>
+      <div class="cfg-row"><span class="cfg-label">2⏱️ Pomo tag <span class="cfg-sub">(1–2h)</span></span><input id="cfg-pomo2" type="number" min="0" step="0.1" class="cfg-input" /></div>
+      <div class="cfg-row"><span class="cfg-label">4⏱️ Pomo tag <span class="cfg-sub">(3–4h)</span></span><input id="cfg-pomo4" type="number" min="0" step="0.1" class="cfg-input" /></div>
+      <div class="cfg-row"><span class="cfg-label">6⏱️ Pomo tag <span class="cfg-sub">(4–6h)</span></span><input id="cfg-pomo6" type="number" min="0" step="0.1" class="cfg-input" /></div>
+      <div class="cfg-row"><span class="cfg-label">8⏱️ Pomo tag <span class="cfg-sub">(6–8h)</span></span><input id="cfg-pomo8" type="number" min="0" step="0.1" class="cfg-input" /></div>
+      <div class="cfg-row"><span class="cfg-label">✅ Habit check-in</span><input id="cfg-habit" type="number" min="0" step="0.1" class="cfg-input" /></div>
+    </div>
+    <button class="btn btn-primary" onclick="saveConfig()" style="width:100%;margin-top:16px;padding:11px;text-align:center">Save</button>
+  </div>
 
   <div class="section-title" style="margin-bottom:16px">Focus timer scores</div>
   <div class="card" style="margin-bottom:24px">
     <div class="card-label" style="text-align:left;margin-bottom:12px">Points per completed focus session</div>
     <div style="display:flex;flex-direction:column;gap:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:0.9rem">💼 Work</span>
-        <input id="cfg-focus-work" type="number" min="0" step="0.1"
-               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
+      <div class="cfg-row"><span class="cfg-label">💼 Work</span><input id="cfg-focus-work" type="number" min="0" step="0.1" class="cfg-input" /></div>
+      <div class="cfg-row"><span class="cfg-label">📚 Homework</span><input id="cfg-focus-homework" type="number" min="0" step="0.1" class="cfg-input" /></div>
+      <div class="cfg-row"><span class="cfg-label">🎓 Thesis</span><input id="cfg-focus-thesis" type="number" min="0" step="0.1" class="cfg-input" /></div>
+      <div class="cfg-row"><span class="cfg-label">🗓️ LONG meeting</span><input id="cfg-focus-long" type="number" min="0" step="0.1" class="cfg-input" /></div>
+      <div class="cfg-row"><span class="cfg-label">🗓️ SHORT meeting</span><input id="cfg-focus-short" type="number" min="0" step="0.1" class="cfg-input" /></div>
+      <div class="cfg-row"><span class="cfg-label">🖥️ Digital Housekeeping</span><input id="cfg-focus-digital" type="number" min="0" step="0.1" class="cfg-input" /></div>
+      <div class="cfg-row"><span class="cfg-label">🧹 Cleaning and ordering</span><input id="cfg-focus-cleaning" type="number" min="0" step="0.1" class="cfg-input" /></div>
+      <div class="cfg-row"><span class="cfg-label">🌅 Morning routine</span><input id="cfg-focus-morning" type="number" min="0" step="0.1" class="cfg-input" /></div>
+      <div class="cfg-row"><span class="cfg-label">🍳 Cooking</span><input id="cfg-focus-cooking" type="number" min="0" step="0.1" class="cfg-input" /></div>
+    </div>
+    <button class="btn btn-primary" onclick="saveConfig()" style="width:100%;margin-top:16px;padding:11px;text-align:center">Save</button>
+  </div>
+
+  <div class="section-title" style="margin-bottom:16px">Goals & limits</div>
+  <div class="card" style="margin-bottom:24px">
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="cfg-row">
+        <div><div class="cfg-label">🎯 Daily goal (pts)</div><div class="cfg-sub">Progress bar target</div></div>
+        <input id="cfg-goal" type="number" min="1" step="0.5" class="cfg-input" />
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:0.9rem">📚 Homework</span>
-        <input id="cfg-focus-homework" type="number" min="0" step="0.1"
-               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
+      <div class="cfg-row">
+        <div><div class="cfg-label">🔒 Balance cap (pts)</div><div class="cfg-sub">Max balance (0 = no cap)</div></div>
+        <input id="cfg-cap" type="number" min="0" step="1" class="cfg-input" />
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:0.9rem">🎓 Thesis</span>
-        <input id="cfg-focus-thesis" type="number" min="0" step="0.1"
-               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:0.9rem">🗓️ LONG meeting</span>
-        <input id="cfg-focus-long" type="number" min="0" step="0.1"
-               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:0.9rem">🗓️ SHORT meeting</span>
-        <input id="cfg-focus-short" type="number" min="0" step="0.1"
-               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:0.9rem">🖥️ Digital Housekeeping</span>
-        <input id="cfg-focus-digital" type="number" min="0" step="0.1"
-               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:0.9rem">🧹 Cleaning and ordering</span>
-        <input id="cfg-focus-cleaning" type="number" min="0" step="0.1"
-               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:0.9rem">🌅 Morning routine</span>
-        <input id="cfg-focus-morning" type="number" min="0" step="0.1"
-               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:0.9rem">🍳 Cooking</span>
-        <input id="cfg-focus-cooking" type="number" min="0" step="0.1"
-               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
+      <div class="cfg-row">
+        <div><div class="cfg-label">⚡ Score multiplier</div><div class="cfg-sub">Multiply all earned pts</div></div>
+        <input id="cfg-multiplier" type="number" min="1" step="0.5" class="cfg-input" />
       </div>
     </div>
-    <button class="btn btn-primary" onclick="saveConfig()"
-            style="width:100%;margin-top:16px;padding:11px;text-align:center">
-      Save
-    </button>
+    <button class="btn btn-primary" onclick="saveConfig()" style="width:100%;margin-top:16px;padding:11px;text-align:center">Save</button>
   </div>
 
   <div class="section-title" style="margin-bottom:16px">Samsung Secure Folder</div>
@@ -568,31 +494,66 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  let editMode = false;
-  let punishEditMode = false;
-  let currentRewards = [];
-  let currentPunishments = [];
-  let currentBalance = 0;
+  // ── State ──────────────────────────────────────────────────────────────────
+  let editMode = false, punishEditMode = false;
+  let currentRewards = [], currentPunishments = [], currentBalance = 0;
+  let currentDailyGoal = 8, currentTodayTotal = 0;
+  let confirmCallback = null;
+  let sfCountdownInterval = null;
+  let inactivityWarnTimeout = null;
+
+  // ── Confirmation modal ─────────────────────────────────────────────────────
+  function showConfirm(title, body, cb) {
+    document.getElementById("confirm-title").textContent = title;
+    document.getElementById("confirm-body").textContent = body;
+    document.getElementById("confirm-modal").style.display = "flex";
+    confirmCallback = cb;
+  }
+  function confirmOk() {
+    document.getElementById("confirm-modal").style.display = "none";
+    if (confirmCallback) confirmCallback();
+    confirmCallback = null;
+  }
+  function confirmCancel() {
+    document.getElementById("confirm-modal").style.display = "none";
+    confirmCallback = null;
+  }
 
   // ── Score ──────────────────────────────────────────────────────────────────
-
   async function loadScore() {
     const btn = document.getElementById("refresh-btn");
     const icon = document.getElementById("refresh-icon");
-    const errorEl = document.getElementById("error");
-
-    btn.disabled = true;
-    icon.classList.add("spin");
-    errorEl.style.display = "none";
-
+    btn.disabled = true; icon.classList.add("spin");
+    document.getElementById("error").style.display = "none";
     try {
       const res = await fetch("/api/score");
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to load");
 
+      currentTodayTotal = data.today_total;
+      currentDailyGoal  = data.daily_goal || 8;
+      currentBalance    = data.balance;
+
       document.getElementById("today-score").textContent = data.today_total.toFixed(1);
-      document.getElementById("balance").textContent = data.balance.toFixed(1);
-      currentBalance = data.balance;
+      document.getElementById("balance").textContent     = data.balance.toFixed(1);
+
+      // Streak chip
+      const streak = data.streak || 0;
+      document.getElementById("streak-chip").textContent =
+        streak === 0 ? "🔥 No streak yet" : `🔥 ${streak} day streak`;
+      if (data.streak_bonus) showToast(`🔥 ${streak}-day streak! +${data.streak_bonus} bonus pts!`);
+
+      // Multiplier chip
+      const mul = data.active_multiplier || 1;
+      const mulChip = document.getElementById("multiplier-chip");
+      if (mul > 1) { mulChip.textContent = `⚡ ${mul}× multiplier`; mulChip.style.display = ""; }
+      else mulChip.style.display = "none";
+
+      // Daily goal bar
+      const pct = Math.min(100, (data.today_total / currentDailyGoal) * 100);
+      document.getElementById("goal-bar").style.width = pct + "%";
+      document.getElementById("goal-label").textContent =
+        `${data.today_total.toFixed(1)} / ${currentDailyGoal} pts`;
 
       const parts = [];
       if (data.task_count)  parts.push(`${data.task_count} task${data.task_count  !== 1 ? "s" : ""}`);
@@ -600,40 +561,74 @@
       if (data.focus_count) parts.push(`${data.focus_count} pomo${data.focus_count !== 1 ? "s" : ""}`);
       document.getElementById("task-count").textContent = parts.join(" · ") || "nothing yet";
 
-      const dateStr = new Date(data.date + "T12:00:00").toLocaleDateString("en-US", {
-        weekday: "long", month: "long", day: "numeric"
-      });
-      document.getElementById("date-badge").textContent = dateStr;
+      document.getElementById("date-badge").textContent = new Date(data.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+
+      // Balance cap label
+      document.getElementById("balance-cap-label").textContent = "points";
 
       renderItems(data.items);
-      document.getElementById("inactivity-banner").style.display =
-        data.inactivity_punished ? "" : "none";
+      renderNextReward();
+
+      // Inactivity banners
+      document.getElementById("inactivity-banner").style.display = data.inactivity_punished ? "" : "none";
+      scheduleInactivityWarning(data.hours_since_activity);
+
       if (data.errors && data.errors.length) console.warn("API errors:", data.errors);
     } catch (err) {
-      const errorEl = document.getElementById("error");
-      errorEl.textContent = "Error: " + err.message;
-      errorEl.style.display = "block";
+      document.getElementById("error").textContent = "Error: " + err.message;
+      document.getElementById("error").style.display = "block";
     } finally {
-      btn.disabled = false;
-      icon.classList.remove("spin");
+      btn.disabled = false; icon.classList.remove("spin");
     }
   }
 
-  // ── Rewards ────────────────────────────────────────────────────────────────
+  function scheduleInactivityWarning(hoursSince) {
+    clearTimeout(inactivityWarnTimeout);
+    const warnBanner = document.getElementById("warning-banner");
+    const warnMsg    = document.getElementById("warning-msg");
+    if (hoursSince === null || hoursSince === undefined) { warnBanner.style.display = "none"; return; }
+    if (hoursSince >= 20 && hoursSince < 24) {
+      const hoursLeft = (24 - hoursSince).toFixed(1);
+      warnMsg.innerHTML = `<strong>⚠️ Inactivity warning</strong>${hoursLeft}h left before all points are wiped!`;
+      warnBanner.style.display = "";
+    } else {
+      warnBanner.style.display = "none";
+    }
+    if (hoursSince < 20) {
+      const msUntilWarn = (20 - hoursSince) * 3600 * 1000;
+      inactivityWarnTimeout = setTimeout(() => {
+        warnMsg.innerHTML = `<strong>⚠️ Inactivity warning</strong>4h left before all points are wiped!`;
+        warnBanner.style.display = "";
+        sendNotification("⚠️ Inactivity warning", "4 hours left before all your points are wiped!");
+      }, msUntilWarn);
+    }
+  }
 
+  function renderNextReward() {
+    const wrap = document.getElementById("next-reward-wrap");
+    const affordable = currentRewards.filter(r => r.cost <= currentBalance);
+    const next = currentRewards.filter(r => r.cost > currentBalance).sort((a,b) => a.cost - b.cost)[0];
+    if (!next) { wrap.style.display = "none"; return; }
+    wrap.style.display = "";
+    const pct = Math.min(100, (currentBalance / next.cost) * 100);
+    document.getElementById("next-reward-bar").style.width = pct + "%";
+    document.getElementById("next-reward-label").textContent = `→ ${next.name}`;
+    document.getElementById("next-reward-pts").textContent   = `${currentBalance.toFixed(1)} / ${next.cost} pts`;
+  }
+
+  // ── Rewards ────────────────────────────────────────────────────────────────
   async function loadRewards() {
     const res = await fetch("/api/rewards");
     if (!res.ok) return;
     const data = await res.json();
-    currentRewards = data.rewards;
-    currentBalance = data.balance;
-    renderRewards();
+    currentRewards = data.rewards; currentBalance = data.balance;
+    renderRewards(); renderNextReward();
   }
 
   function renderRewards() {
     const list = document.getElementById("rewards-list");
     if (editMode) {
-      list.innerHTML = currentRewards.map((r) => `
+      list.innerHTML = currentRewards.map(r => `
         <div class="reward-edit-row" data-id="${r.id}">
           <input class="input-name" value="${escHtml(r.name)}" placeholder="Reward name" />
           <input class="input-cost" type="number" min="0" step="0.5" value="${r.cost}" title="Cost (pts)" />
@@ -642,378 +637,78 @@
         </div>`).join("");
       const hdr = document.createElement("div");
       hdr.style.cssText = "display:flex;gap:8px;font-size:0.68rem;color:var(--muted);padding:0 2px;margin-top:4px";
-      hdr.innerHTML = `<span style="flex:1">Name</span><span style="width:60px;text-align:center">pts</span><span style="width:72px;text-align:center">🔒 time</span><span style="width:36px"></span>`;
+      hdr.innerHTML = `<span style="flex:1">Name</span><span style="width:60px;text-align:center">pts</span><span style="width:56px;text-align:center">🔒 min</span><span style="width:36px"></span>`;
       list.appendChild(hdr);
       document.getElementById("edit-actions").style.display = "flex";
       document.getElementById("edit-btn").style.display = "none";
     } else {
       document.getElementById("edit-actions").style.display = "none";
       document.getElementById("edit-btn").style.display = "";
-      if (!currentRewards.length) {
-        list.innerHTML = `<div class="empty-state"><p>No rewards yet. Hit Edit to add some.</p></div>`;
-        return;
-      }
+      if (!currentRewards.length) { list.innerHTML = `<div class="empty-state"><p>No rewards yet.</p></div>`; return; }
       list.innerHTML = currentRewards.map(r => {
         const canAfford = currentBalance >= r.cost;
-        const unlockBadge = (r.unlock_minutes > 0)
-          ? `<span class="unlock-badge">🔓 ${r.unlock_minutes}m</span>`
-          : "";
-        return `
-          <div class="reward-item ${canAfford ? "" : "insufficient"}"
-               onclick="redeem('${r.id}', ${r.cost}, this)"
-               data-id="${r.id}">
-            <span class="reward-name">${escHtml(r.name)}${unlockBadge}</span>
-            <span class="reward-cost">${r.cost} pts</span>
-          </div>`;
+        const unlockBadge = r.unlock_minutes > 0 ? `<span class="unlock-badge">🔓 ${r.unlock_minutes}m</span>` : "";
+        return `<div class="reward-item ${canAfford ? "" : "insufficient"}" onclick="redeem('${r.id}','${escHtml(r.name)}',${r.cost},this)" data-id="${r.id}">
+          <span class="reward-name">${escHtml(r.name)}${unlockBadge}</span>
+          <span class="reward-cost">${r.cost} pts</span>
+        </div>`;
       }).join("");
     }
   }
 
-  async function redeem(rewardId, cost, el) {
-    if (editMode) return;
-    if (currentBalance < cost) return;
-
-    const res = await fetch("/api/redeem", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({reward_id: rewardId}),
+  async function redeem(rewardId, rewardName, cost, el) {
+    if (editMode || currentBalance < cost) return;
+    showConfirm(`Redeem reward?`, `"${rewardName}" costs ${cost} pts. Balance after: ${(currentBalance - cost).toFixed(1)} pts.`, async () => {
+      const res = await fetch("/api/redeem", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({reward_id: rewardId}),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error === "insufficient_balance" ? "Not enough points!" : "Error redeeming"); return; }
+      currentBalance = data.balance;
+      document.getElementById("balance").textContent = currentBalance.toFixed(1);
+      el.classList.add("redeemed-flash");
+      setTimeout(() => el.classList.remove("redeemed-flash"), 800);
+      showToast(`✓ Redeemed! Balance: ${currentBalance.toFixed(1)} pts`);
+      renderRewards(); renderNextReward();
+      if (data.secure_folder && data.secure_folder.unlocked) {
+        renderSFCard(data.secure_folder);
+        startSFCountdown(data.secure_folder.seconds_left);
+      }
     });
-    const data = await res.json();
-    if (!res.ok) {
-      showToast(data.error === "insufficient_balance" ? "Not enough points!" : "Error redeeming");
-      return;
-    }
-
-    currentBalance = data.balance;
-    document.getElementById("balance").textContent = currentBalance.toFixed(1);
-
-    el.classList.add("redeemed-flash");
-    setTimeout(() => el.classList.remove("redeemed-flash"), 800);
-    showToast(`✓ Redeemed! Balance: ${currentBalance.toFixed(1)} pts`);
-    renderRewards();
-
-    if (data.secure_folder && data.secure_folder.unlocked) {
-      renderSFCard(data.secure_folder);
-      startSFCountdown(data.secure_folder.seconds_left);
-    }
   }
 
-  // ── Edit rewards ────────────────────────────────────────────────────────────
-
-  function toggleEdit() {
-    editMode = true;
-    renderRewards();
-  }
-
-  function cancelEdit() {
-    editMode = false;
-    renderRewards();
-  }
+  function toggleEdit()  { editMode = true;  renderRewards(); }
+  function cancelEdit()  { editMode = false; renderRewards(); }
 
   function addRewardRow() {
     const list = document.getElementById("rewards-list");
     const row = document.createElement("div");
-    row.className = "reward-edit-row";
-    row.dataset.id = "";
-    row.innerHTML = `
-      <input class="input-name" placeholder="Reward name" />
-      <input class="input-cost" type="number" min="0" step="0.5" value="1" title="Cost (pts)" />
-      <input class="input-mins" type="number" min="1" step="1" value="30" title="SF unlock (minutes)" />
-      <button class="btn btn-danger" style="padding:6px 10px" onclick="removeRewardRow(this)">✕</button>`;
+    row.className = "reward-edit-row"; row.dataset.id = "";
+    row.innerHTML = `<input class="input-name" placeholder="Reward name" /><input class="input-cost" type="number" min="0" step="0.5" value="1" title="Cost (pts)" /><input class="input-mins" type="number" min="1" step="1" value="30" title="SF unlock (minutes)" /><button class="btn btn-danger" style="padding:6px 10px" onclick="removeRewardRow(this)">✕</button>`;
     list.appendChild(row);
   }
-
-  function removeRewardRow(btn) {
-    btn.closest(".reward-edit-row").remove();
-  }
+  function removeRewardRow(btn) { btn.closest(".reward-edit-row").remove(); }
 
   async function saveRewards() {
-    const rows = document.querySelectorAll(".reward-edit-row");
+    const rows = document.querySelectorAll("#rewards-list .reward-edit-row");
     const rewards = Array.from(rows).map(row => ({
       id: row.dataset.id || "",
       name: row.querySelector(".input-name").value.trim(),
       cost: parseFloat(row.querySelector(".input-cost").value) || 1,
-      unlock_minutes: parseInt(row.querySelector(".input-mins").value) || 0,
+      unlock_minutes: parseInt(row.querySelector(".input-mins").value) || 30,
     })).filter(r => r.name);
-
-    const res = await fetch("/api/rewards", {
-      method: "PUT",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({rewards}),
-    });
+    const res = await fetch("/api/rewards", { method: "PUT", headers: {"Content-Type": "application/json"}, body: JSON.stringify({rewards}) });
     if (!res.ok) { showToast("Failed to save"); return; }
-    const data = await res.json();
-    currentRewards = data.rewards;
-    editMode = false;
-    renderRewards();
-    showToast("Rewards saved!");
-  }
-
-  // ── Completed items ─────────────────────────────────────────────────────────
-
-  function renderItems(items) {
-    const list = document.getElementById("task-list");
-    if (!items || !items.length) {
-      list.innerHTML = `<div class="empty-state"><div class="emoji">🎯</div><p>No completed tasks or habits yet today.<br>Go crush it!</p></div>`;
-      return;
-    }
-    list.innerHTML = items.map(t => {
-      const badges = [];
-      if (t.type === "habit") {
-        badges.push(`<span class="badge badge-habit">✅ Habit</span>`);
-      } else if (t.type === "focus") {
-        badges.push(`<span class="badge badge-focus">🍅 Pomo</span>`);
-      } else {
-        if (t.priority === 5)              badges.push(`<span class="badge badge-priority">⚡ High</span>`);
-        if ((t.tags||[]).includes("🐸"))   badges.push(`<span class="badge badge-frog">🐸 Frog</span>`);
-        if ((t.tags||[]).includes("4⏱️")) badges.push(`<span class="badge badge-pomo">4⏱️ Pomo</span>`);
-      }
-      return `
-        <div class="task-item">
-          <div class="task-info">
-            <div class="task-title">${escHtml(t.title)}</div>
-            <div class="task-badges">${badges.join("")}</div>
-          </div>
-          <div class="task-score">+${t.score}</div>
-        </div>`;
-    }).join("");
-  }
-
-  // ── Helpers ─────────────────────────────────────────────────────────────────
-
-  function escHtml(str) {
-    return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-  }
-
-  function showToast(msg) {
-    const t = document.getElementById("toast");
-    t.textContent = msg;
-    t.classList.add("show");
-    setTimeout(() => t.classList.remove("show"), 2200);
-  }
-
-  // ── Tabs ───────────────────────────────────────────────────────────────────
-
-  function switchTab(tab) {
-    ["today", "tasks", "settings"].forEach(t => {
-      document.getElementById(`panel-${t}`).style.display = t === tab ? "" : "none";
-      document.getElementById(`tab-${t}`).classList.toggle("active", t === tab);
-    });
-    if (tab === "tasks")    loadPending();
-    if (tab === "settings") { loadConfig(); loadSFStatus(); }
-  }
-
-  // ── Settings ───────────────────────────────────────────────────────────────
-
-  async function loadConfig() {
-    const res = await fetch("/api/config");
-    if (!res.ok) return;
-    const data = await res.json();
-    const s = data.scoring;
-    document.getElementById("cfg-base").value      = s.base_task     ?? 1.0;
-    document.getElementById("cfg-priority").value = s.priority_high ?? 0.5;
-    document.getElementById("cfg-frog").value     = s.tag_frog      ?? 0.8;
-    document.getElementById("cfg-pomo2").value    = s.tag_pomo2     ?? 0.3;
-    document.getElementById("cfg-pomo4").value    = s.tag_pomo4     ?? 0.8;
-    document.getElementById("cfg-pomo6").value    = s.tag_pomo6     ?? 1.2;
-    document.getElementById("cfg-pomo8").value    = s.tag_pomo8     ?? 1.6;
-    document.getElementById("cfg-habit").value         = s.habit              ?? 1.0;
-    document.getElementById("cfg-focus-work").value    = s.focus_work         ?? 1.0;
-    document.getElementById("cfg-focus-homework").value= s.focus_homework     ?? 1.2;
-    document.getElementById("cfg-focus-thesis").value  = s.focus_thesis       ?? 2.0;
-    document.getElementById("cfg-focus-long").value    = s.focus_long_meeting          ?? 0.5;
-    document.getElementById("cfg-focus-short").value   = s.focus_short_meeting         ?? 0.3;
-    document.getElementById("cfg-focus-digital").value = s.focus_digital_housekeeping  ?? 0.5;
-    document.getElementById("cfg-focus-cleaning").value= s.focus_cleaning              ?? 0.5;
-    document.getElementById("cfg-focus-morning").value = s.focus_morning_routine       ?? 0.3;
-    document.getElementById("cfg-focus-cooking").value = s.focus_cooking               ?? 0.3;
-  }
-
-  async function saveConfig() {
-    const scoring = {
-      base_task:     parseFloat(document.getElementById("cfg-base").value)     || 1,
-      priority_high: parseFloat(document.getElementById("cfg-priority").value) || 0,
-      tag_frog:      parseFloat(document.getElementById("cfg-frog").value)     || 0,
-      tag_pomo2:     parseFloat(document.getElementById("cfg-pomo2").value)    || 0,
-      tag_pomo4:     parseFloat(document.getElementById("cfg-pomo4").value)    || 0,
-      tag_pomo6:     parseFloat(document.getElementById("cfg-pomo6").value)    || 0,
-      tag_pomo8:     parseFloat(document.getElementById("cfg-pomo8").value)    || 0,
-      habit:               parseFloat(document.getElementById("cfg-habit").value)        || 0,
-      focus_work:          parseFloat(document.getElementById("cfg-focus-work").value)    || 0,
-      focus_homework:      parseFloat(document.getElementById("cfg-focus-homework").value)|| 0,
-      focus_thesis:        parseFloat(document.getElementById("cfg-focus-thesis").value)  || 0,
-      focus_long_meeting:          parseFloat(document.getElementById("cfg-focus-long").value)    || 0,
-      focus_short_meeting:         parseFloat(document.getElementById("cfg-focus-short").value)   || 0,
-      focus_digital_housekeeping:  parseFloat(document.getElementById("cfg-focus-digital").value) || 0,
-      focus_cleaning:              parseFloat(document.getElementById("cfg-focus-cleaning").value)|| 0,
-      focus_morning_routine:       parseFloat(document.getElementById("cfg-focus-morning").value) || 0,
-      focus_cooking:               parseFloat(document.getElementById("cfg-focus-cooking").value) || 0,
-    };
-    const res = await fetch("/api/config", {
-      method: "PUT",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({scoring}),
-    });
-    if (res.ok) showToast("Scoring rules saved!");
-    else        showToast("Failed to save");
-  }
-
-  // ── Pending tasks ──────────────────────────────────────────────────────────
-
-  async function loadPending() {
-    const btn = document.getElementById("pending-btn");
-    const icon = document.getElementById("pending-icon");
-    btn.disabled = true;
-    icon.classList.add("spin");
-
-    try {
-      const res = await fetch("/api/pending");
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to load");
-      document.getElementById("pending-count").textContent =
-        `${data.count} task${data.count !== 1 ? "s" : ""} pending`;
-      renderPending(data.tasks);
-    } catch (err) {
-      document.getElementById("pending-list").innerHTML =
-        `<div class="empty-state"><p>Error: ${escHtml(err.message)}</p></div>`;
-    } finally {
-      btn.disabled = false;
-      icon.classList.remove("spin");
-    }
-  }
-
-  function renderPending(tasks) {
-    const list = document.getElementById("pending-list");
-    if (!tasks || !tasks.length) {
-      list.innerHTML = `<div class="empty-state"><div class="emoji">✅</div><p>No pending tasks!</p></div>`;
-      return;
-    }
-    list.innerHTML = tasks.map(t => {
-      const badges = [];
-      if (t.priority === 5)              badges.push(`<span class="badge badge-priority">⚡ High</span>`);
-      if ((t.tags||[]).includes("🐸"))   badges.push(`<span class="badge badge-frog">🐸 Frog</span>`);
-      if ((t.tags||[]).includes("4⏱️")) badges.push(`<span class="badge badge-pomo">4⏱️ Pomo</span>`);
-      return `
-        <div class="task-item">
-          <div class="task-info">
-            <div class="task-title">${escHtml(t.title)}</div>
-            <div class="task-badges">
-              ${badges.join("")}
-              <span class="pending-project">${escHtml(t.project)}</span>
-            </div>
-          </div>
-          <div class="pending-score">+${t.score}</div>
-        </div>`;
-    }).join("");
-  }
-
-  // ── Secure Folder ──────────────────────────────────────────────────────────
-
-  let sfCountdownInterval = null;
-
-  async function loadSFStatus() {
-    const res = await fetch("/api/secure-folder");
-    if (!res.ok) return;
-    const data = await res.json();
-    if (data.unlocked) {
-      renderSFCard(data);
-      startSFCountdown(data.seconds_left);
-    } else {
-      hideSFCard();
-    }
-    if (document.getElementById("sf-password-status")) {
-      document.getElementById("sf-password-status").textContent =
-        data.has_password ? "✓ Password saved" : "No password set";
-    }
-  }
-
-  function renderSFCard(sf) {
-    document.getElementById("sf-reveal-card").style.display = "";
-    document.getElementById("sf-password-value").textContent = sf.password || "—";
-    document.getElementById("sf-reward-name").textContent = sf.reward_name || "";
-    updateCountdownDisplay(sf.seconds_left);
-  }
-
-  function hideSFCard() {
-    document.getElementById("sf-reveal-card").style.display = "none";
-    clearInterval(sfCountdownInterval);
-    sfCountdownInterval = null;
-  }
-
-  function startSFCountdown(secondsLeft) {
-    clearInterval(sfCountdownInterval);
-    sfCountdownInterval = null;
-    let secs = secondsLeft;
-    updateCountdownDisplay(secs);
-    sfCountdownInterval = setInterval(() => {
-      secs--;
-      if (secs <= 0) {
-        clearInterval(sfCountdownInterval);
-        sfCountdownInterval = null;
-        hideSFCard();
-        showToast("Secure Folder locked");
-        sendNotification("Reward time is over", "Your Secure Folder has been locked again.");
-      } else {
-        updateCountdownDisplay(secs);
-      }
-    }, 1000);
-  }
-
-  function updateCountdownDisplay(secs) {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    const display = m > 0 ? `${m}m ${s.toString().padStart(2,"0")}s` : `${s}s`;
-    const el = document.getElementById("sf-countdown-value");
-    if (el) el.textContent = display;
-  }
-
-  async function lockSF() {
-    const res = await fetch("/api/secure-folder/lock", {method: "POST"});
-    if (res.ok) { hideSFCard(); showToast("Secure Folder locked"); }
-  }
-
-  function copySFPassword() {
-    const pw = document.getElementById("sf-password-value").textContent;
-    if (!pw || pw === "—") return;
-    navigator.clipboard.writeText(pw).then(() => showToast("Password copied!"));
-  }
-
-  async function saveSFPassword() {
-    const pw = document.getElementById("sf-password-input").value;
-    if (!pw.trim()) { showToast("Enter a password first"); return; }
-    const res = await fetch("/api/secure-folder/password", {
-      method: "PUT",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({password: pw}),
-    });
-    if (res.ok) {
-      document.getElementById("sf-password-input").value = "";
-      document.getElementById("sf-password-status").textContent = "✓ Password saved";
-      showToast("Password saved!");
-    } else {
-      showToast("Failed to save password");
-    }
-  }
-
-  async function clearSFPassword() {
-    const res = await fetch("/api/secure-folder/password", {
-      method: "PUT",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({password: ""}),
-    });
-    if (res.ok) {
-      document.getElementById("sf-password-status").textContent = "No password set";
-      showToast("Password cleared");
-    }
+    currentRewards = (await res.json()).rewards;
+    editMode = false; renderRewards(); renderNextReward(); showToast("Rewards saved!");
   }
 
   // ── Punishments ────────────────────────────────────────────────────────────
-
   async function loadPunishments() {
     const res = await fetch("/api/punishments");
     if (!res.ok) return;
-    const data = await res.json();
-    currentPunishments = data.punishments;
+    currentPunishments = (await res.json()).punishments;
     renderPunishments();
   }
 
@@ -1031,58 +726,38 @@
     } else {
       document.getElementById("punish-edit-actions").style.display = "none";
       document.getElementById("punish-edit-btn").style.display = "";
-      if (!currentPunishments.length) {
-        list.innerHTML = `<div class="empty-state"><p>No punishments yet. Hit Edit to add some.</p></div>`;
-        return;
-      }
+      if (!currentPunishments.length) { list.innerHTML = `<div class="empty-state"><p>No punishments yet.</p></div>`; return; }
       list.innerHTML = currentPunishments.map(p => `
-        <div class="punish-item" onclick="applyPunishment('${p.id}', ${p.cost}, this)">
+        <div class="punish-item" onclick="applyPunishment('${p.id}','${escHtml(p.name)}',${p.cost},this)">
           <span class="reward-name">${escHtml(p.name)}</span>
           <span class="punish-cost">−${p.cost} pts</span>
         </div>`).join("");
     }
   }
 
-  async function applyPunishment(punishmentId, cost, el) {
+  async function applyPunishment(id, name, cost, el) {
     if (punishEditMode) return;
-    const res = await fetch("/api/punish", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({punishment_id: punishmentId}),
+    showConfirm("Apply punishment?", `"${name}" will deduct ${cost} pts from your balance.`, async () => {
+      const res = await fetch("/api/punish", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({punishment_id: id}) });
+      const data = await res.json();
+      if (!res.ok) { showToast("Error"); return; }
+      currentBalance = data.balance;
+      document.getElementById("balance").textContent = currentBalance.toFixed(1);
+      showToast(`💀 −${cost} pts. Balance: ${currentBalance.toFixed(1)}`);
+      renderRewards(); renderNextReward();
     });
-    const data = await res.json();
-    if (!res.ok) { showToast("Error applying punishment"); return; }
-    currentBalance = data.balance;
-    document.getElementById("balance").textContent = currentBalance.toFixed(1);
-    showToast(`💀 −${cost} pts. Balance: ${currentBalance.toFixed(1)}`);
-    renderRewards();
   }
 
-  function togglePunishEdit() {
-    punishEditMode = true;
-    renderPunishments();
-  }
-
-  function cancelPunishEdit() {
-    punishEditMode = false;
-    renderPunishments();
-  }
+  function togglePunishEdit()  { punishEditMode = true;  renderPunishments(); }
+  function cancelPunishEdit()  { punishEditMode = false; renderPunishments(); }
 
   function addPunishRow() {
     const list = document.getElementById("punish-list");
-    const row = document.createElement("div");
-    row.className = "reward-edit-row";
-    row.dataset.id = "";
-    row.innerHTML = `
-      <input class="input-name" placeholder="Punishment name" />
-      <input class="input-cost" type="number" min="0" step="0.5" value="5" title="Points to deduct" />
-      <button class="btn btn-danger" style="padding:6px 10px" onclick="removePunishRow(this)">✕</button>`;
+    const row = document.createElement("div"); row.className = "reward-edit-row"; row.dataset.id = "";
+    row.innerHTML = `<input class="input-name" placeholder="Punishment name" /><input class="input-cost" type="number" min="0" step="0.5" value="5" /><button class="btn btn-danger" style="padding:6px 10px" onclick="removePunishRow(this)">✕</button>`;
     list.appendChild(row);
   }
-
-  function removePunishRow(btn) {
-    btn.closest(".reward-edit-row").remove();
-  }
+  function removePunishRow(btn) { btn.closest(".reward-edit-row").remove(); }
 
   async function savePunishments() {
     const rows = document.querySelectorAll("#punish-list .reward-edit-row");
@@ -1091,33 +766,280 @@
       name: row.querySelector(".input-name").value.trim(),
       cost: parseFloat(row.querySelector(".input-cost").value) || 1,
     })).filter(p => p.name);
-    const res = await fetch("/api/punishments", {
-      method: "PUT",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({punishments}),
-    });
+    const res = await fetch("/api/punishments", { method: "PUT", headers: {"Content-Type": "application/json"}, body: JSON.stringify({punishments}) });
     if (!res.ok) { showToast("Failed to save"); return; }
+    currentPunishments = (await res.json()).punishments;
+    punishEditMode = false; renderPunishments(); showToast("Punishments saved!");
+  }
+
+  // ── Completed items ─────────────────────────────────────────────────────────
+  function renderItems(items) {
+    const list = document.getElementById("task-list");
+    if (!items || !items.length) {
+      list.innerHTML = `<div class="empty-state"><div class="emoji">🎯</div><p>No completed tasks yet today.<br>Go crush it!</p></div>`; return;
+    }
+    list.innerHTML = items.map(t => {
+      const badges = [];
+      if (t.type === "habit")       badges.push(`<span class="badge badge-habit">✅ Habit</span>`);
+      else if (t.type === "focus")  badges.push(`<span class="badge badge-focus">🍅 Focus</span>`);
+      else {
+        if (t.priority === 5)              badges.push(`<span class="badge badge-priority">⚡ High</span>`);
+        if ((t.tags||[]).includes("🐸"))   badges.push(`<span class="badge badge-frog">🐸 Frog</span>`);
+        if ((t.tags||[]).includes("4⏱️")) badges.push(`<span class="badge badge-pomo">4⏱️</span>`);
+        if ((t.tags||[]).includes("6⏱️")) badges.push(`<span class="badge badge-pomo">6⏱️</span>`);
+        if ((t.tags||[]).includes("8⏱️")) badges.push(`<span class="badge badge-pomo">8⏱️</span>`);
+        if ((t.tags||[]).includes("2⏱️")) badges.push(`<span class="badge badge-pomo">2⏱️</span>`);
+      }
+      return `<div class="task-item"><div class="task-info"><div class="task-title">${escHtml(t.title)}</div><div class="task-badges">${badges.join("")}</div></div><div class="task-score">+${t.score}</div></div>`;
+    }).join("");
+  }
+
+  // ── Tabs ───────────────────────────────────────────────────────────────────
+  function switchTab(tab) {
+    ["today","tasks","history","settings"].forEach(t => {
+      document.getElementById(`panel-${t}`).style.display = t === tab ? "" : "none";
+      document.getElementById(`tab-${t}`).classList.toggle("active", t === tab);
+    });
+    if (tab === "tasks")   loadPending();
+    if (tab === "history") loadHistory();
+    if (tab === "settings") { loadConfig(); loadSFStatus(); }
+  }
+
+  // ── Settings ───────────────────────────────────────────────────────────────
+  async function loadConfig() {
+    const res = await fetch("/api/config"); if (!res.ok) return;
+    const data = await res.json(); const s = data.scoring;
+    document.getElementById("cfg-base").value          = s.base_task     ?? 1.0;
+    document.getElementById("cfg-priority").value      = s.priority_high ?? 0.5;
+    document.getElementById("cfg-frog").value          = s.tag_frog      ?? 0.8;
+    document.getElementById("cfg-pomo2").value         = s.tag_pomo2     ?? 0.3;
+    document.getElementById("cfg-pomo4").value         = s.tag_pomo4     ?? 0.8;
+    document.getElementById("cfg-pomo6").value         = s.tag_pomo6     ?? 1.2;
+    document.getElementById("cfg-pomo8").value         = s.tag_pomo8     ?? 1.6;
+    document.getElementById("cfg-habit").value         = s.habit         ?? 1.0;
+    document.getElementById("cfg-focus-work").value    = s.focus_work    ?? 1.0;
+    document.getElementById("cfg-focus-homework").value= s.focus_homework?? 1.2;
+    document.getElementById("cfg-focus-thesis").value  = s.focus_thesis  ?? 2.0;
+    document.getElementById("cfg-focus-long").value    = s.focus_long_meeting ?? 0.5;
+    document.getElementById("cfg-focus-short").value   = s.focus_short_meeting?? 0.3;
+    document.getElementById("cfg-focus-digital").value = s.focus_digital_housekeeping ?? 0.5;
+    document.getElementById("cfg-focus-cleaning").value= s.focus_cleaning ?? 0.5;
+    document.getElementById("cfg-focus-morning").value = s.focus_morning_routine ?? 0.3;
+    document.getElementById("cfg-focus-cooking").value = s.focus_cooking ?? 0.3;
+    document.getElementById("cfg-goal").value          = data.daily_goal        ?? 8;
+    document.getElementById("cfg-cap").value           = data.balance_cap       ?? 0;
+    document.getElementById("cfg-multiplier").value    = data.active_multiplier ?? 1;
+  }
+
+  async function saveConfig() {
+    const scoring = {
+      base_task:                   parseFloat(document.getElementById("cfg-base").value)           || 1,
+      priority_high:               parseFloat(document.getElementById("cfg-priority").value)       || 0,
+      tag_frog:                    parseFloat(document.getElementById("cfg-frog").value)           || 0,
+      tag_pomo2:                   parseFloat(document.getElementById("cfg-pomo2").value)          || 0,
+      tag_pomo4:                   parseFloat(document.getElementById("cfg-pomo4").value)          || 0,
+      tag_pomo6:                   parseFloat(document.getElementById("cfg-pomo6").value)          || 0,
+      tag_pomo8:                   parseFloat(document.getElementById("cfg-pomo8").value)          || 0,
+      habit:                       parseFloat(document.getElementById("cfg-habit").value)          || 0,
+      focus_work:                  parseFloat(document.getElementById("cfg-focus-work").value)     || 0,
+      focus_homework:              parseFloat(document.getElementById("cfg-focus-homework").value) || 0,
+      focus_thesis:                parseFloat(document.getElementById("cfg-focus-thesis").value)   || 0,
+      focus_long_meeting:          parseFloat(document.getElementById("cfg-focus-long").value)     || 0,
+      focus_short_meeting:         parseFloat(document.getElementById("cfg-focus-short").value)    || 0,
+      focus_digital_housekeeping:  parseFloat(document.getElementById("cfg-focus-digital").value)  || 0,
+      focus_cleaning:              parseFloat(document.getElementById("cfg-focus-cleaning").value) || 0,
+      focus_morning_routine:       parseFloat(document.getElementById("cfg-focus-morning").value)  || 0,
+      focus_cooking:               parseFloat(document.getElementById("cfg-focus-cooking").value)  || 0,
+    };
+    const payload = {
+      scoring,
+      daily_goal:       parseFloat(document.getElementById("cfg-goal").value)       || 8,
+      balance_cap:      parseFloat(document.getElementById("cfg-cap").value)        || 0,
+      active_multiplier:parseFloat(document.getElementById("cfg-multiplier").value) || 1,
+    };
+    const res = await fetch("/api/config", { method: "PUT", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload) });
+    if (res.ok) showToast("Settings saved!"); else showToast("Failed to save");
+  }
+
+  // ── Pending tasks ──────────────────────────────────────────────────────────
+  async function loadPending() {
+    const btn = document.getElementById("pending-btn"); const icon = document.getElementById("pending-icon");
+    btn.disabled = true; icon.classList.add("spin");
+    try {
+      const res = await fetch("/api/pending"); const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+      document.getElementById("pending-count").textContent = `${data.count} task${data.count !== 1 ? "s" : ""} pending`;
+      renderPending(data.tasks);
+    } catch(err) {
+      document.getElementById("pending-list").innerHTML = `<div class="empty-state"><p>Error: ${escHtml(err.message)}</p></div>`;
+    } finally { btn.disabled = false; icon.classList.remove("spin"); }
+  }
+
+  function renderPending(tasks) {
+    const list = document.getElementById("pending-list");
+    if (!tasks || !tasks.length) { list.innerHTML = `<div class="empty-state"><div class="emoji">✅</div><p>No pending tasks!</p></div>`; return; }
+    list.innerHTML = tasks.map(t => {
+      const badges = [];
+      if (t.priority === 5)              badges.push(`<span class="badge badge-priority">⚡ High</span>`);
+      if ((t.tags||[]).includes("🐸"))   badges.push(`<span class="badge badge-frog">🐸</span>`);
+      if ((t.tags||[]).includes("4⏱️")) badges.push(`<span class="badge badge-pomo">4⏱️</span>`);
+      if ((t.tags||[]).includes("6⏱️")) badges.push(`<span class="badge badge-pomo">6⏱️</span>`);
+      if ((t.tags||[]).includes("8⏱️")) badges.push(`<span class="badge badge-pomo">8⏱️</span>`);
+      if ((t.tags||[]).includes("2⏱️")) badges.push(`<span class="badge badge-pomo">2⏱️</span>`);
+      return `<div class="task-item"><div class="task-info"><div class="task-title">${escHtml(t.title)}</div><div class="task-badges">${badges.join("")}<span class="pending-project">${escHtml(t.project)}</span></div></div><div class="pending-score">+${t.score}</div></div>`;
+    }).join("");
+  }
+
+  // ── History ────────────────────────────────────────────────────────────────
+  async function loadHistory() {
+    const res = await fetch("/api/history"); if (!res.ok) return;
     const data = await res.json();
-    currentPunishments = data.punishments;
-    punishEditMode = false;
-    renderPunishments();
-    showToast("Punishments saved!");
+    renderHistoryDays(data.days, data.streak);
+    renderTransactions(data.transactions);
+    renderStreakSummary(data.days, data.streak);
+    renderWeeklySummary(data.days);
+  }
+
+  function renderStreakSummary(days, streak) {
+    const el = document.getElementById("streak-summary");
+    const activeDays = days.filter(d => d.total > 0).length;
+    const best = Math.max(...days.map(d => d.total), 0);
+    const avg = activeDays ? (days.reduce((s,d) => s + d.total, 0) / activeDays).toFixed(1) : 0;
+    el.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div class="card"><div class="card-label">Streak</div><div class="card-value" style="font-size:1.8rem;color:var(--orange)">${streak}</div><div class="card-sub">days 🔥</div></div>
+        <div class="card"><div class="card-label">Best day</div><div class="card-value" style="font-size:1.8rem;color:var(--accent)">${best}</div><div class="card-sub">pts</div></div>
+        <div class="card"><div class="card-label">Avg/day</div><div class="card-value" style="font-size:1.8rem;color:var(--accent2)">${avg}</div><div class="card-sub">pts</div></div>
+      </div>`;
+  }
+
+  function renderHistoryDays(days, streak) {
+    const maxScore = Math.max(...days.map(d => d.total), 1);
+    const today = new Date().toISOString().split("T")[0];
+    document.getElementById("history-list").innerHTML = days.map(d => {
+      const isToday = d.date === today;
+      const pct = (d.total / maxScore) * 100;
+      const dateStr = new Date(d.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+      const parts = [];
+      if (d.task_count)  parts.push(`${d.task_count}t`);
+      if (d.habit_count) parts.push(`${d.habit_count}h`);
+      if (d.focus_count) parts.push(`${d.focus_count}f`);
+      return `<div class="history-day ${isToday ? "today-row" : ""} ${d.total === 0 ? "zero-row" : ""}">
+        <div class="hdate">${dateStr}${isToday ? " <span style='color:var(--accent);font-size:0.65rem'>TODAY</span>" : ""}</div>
+        <div class="hbar-wrap">
+          <div class="hbar-track"><div class="hbar-fill" style="width:${pct}%"></div></div>
+          <div style="font-size:0.65rem;color:var(--muted);margin-top:2px">${parts.join(" · ") || "—"}</div>
+        </div>
+        <div class="hscore">${d.total > 0 ? d.total : "—"}</div>
+      </div>`;
+    }).join("");
+  }
+
+  function renderTransactions(txns) {
+    const el = document.getElementById("txn-list");
+    if (!txns || !txns.length) { el.innerHTML = `<div style="text-align:center;color:var(--muted);padding:16px;font-size:0.85rem">No transactions yet</div>`; return; }
+    const typeIcon = { earn:"✅", redeem:"🎁", punish:"💀", inactivity:"☠️", streak_bonus:"🔥" };
+    el.innerHTML = txns.map(tx => {
+      const amtClass = tx.amount > 0 ? "pos" : tx.amount < 0 ? "neg" : "neu";
+      const amtStr = tx.amount > 0 ? `+${tx.amount}` : tx.amount < 0 ? `${tx.amount}` : "—";
+      return `<div class="txn-item">
+        <div><div class="txn-desc">${typeIcon[tx.type] || "•"} ${escHtml(tx.desc)}</div><div class="txn-time">${tx.ts} · balance: ${tx.balance}</div></div>
+        <div class="txn-amount ${amtClass}">${amtStr}</div>
+      </div>`;
+    }).join("");
+  }
+
+  function renderWeeklySummary(days) {
+    const banner = document.getElementById("weekly-banner");
+    const msg    = document.getElementById("weekly-msg");
+    const dayOfWeek = new Date().getDay(); // 1 = Monday
+    if (dayOfWeek !== 1) { banner.style.display = "none"; return; }
+    // last 7 days (index 1..7 = last week, 0 = today=Monday)
+    const lastWeek = days.slice(1, 8);
+    const total = lastWeek.reduce((s, d) => s + d.total, 0).toFixed(1);
+    const active = lastWeek.filter(d => d.total > 0).length;
+    const best = Math.max(...lastWeek.map(d => d.total), 0);
+    msg.innerHTML = `<strong>📊 Last week summary</strong>${total} pts earned · ${active}/7 active days · best day: ${best} pts`;
+    banner.style.display = "";
+  }
+
+  // ── Secure Folder ──────────────────────────────────────────────────────────
+  async function loadSFStatus() {
+    const res = await fetch("/api/secure-folder"); if (!res.ok) return;
+    const data = await res.json();
+    if (data.unlocked) { renderSFCard(data); startSFCountdown(data.seconds_left); }
+    else hideSFCard();
+    const statusEl = document.getElementById("sf-password-status");
+    if (statusEl) statusEl.textContent = data.has_password ? "✓ Password saved" : "No password set";
+  }
+
+  function renderSFCard(sf) {
+    document.getElementById("sf-reveal-card").style.display = "";
+    document.getElementById("sf-password-value").textContent = sf.password || "—";
+    document.getElementById("sf-reward-name").textContent   = sf.reward_name || "";
+    updateCountdownDisplay(sf.seconds_left);
+  }
+  function hideSFCard() {
+    document.getElementById("sf-reveal-card").style.display = "none";
+    clearInterval(sfCountdownInterval); sfCountdownInterval = null;
+  }
+  function startSFCountdown(secondsLeft) {
+    clearInterval(sfCountdownInterval); sfCountdownInterval = null;
+    let secs = secondsLeft;
+    updateCountdownDisplay(secs);
+    sfCountdownInterval = setInterval(() => {
+      secs--;
+      if (secs <= 0) {
+        clearInterval(sfCountdownInterval); sfCountdownInterval = null;
+        hideSFCard(); showToast("Secure Folder locked");
+        sendNotification("Reward time is over", "Your Secure Folder has been locked again.");
+      } else { updateCountdownDisplay(secs); }
+    }, 1000);
+  }
+  function updateCountdownDisplay(secs) {
+    const m = Math.floor(secs / 60), s = secs % 60;
+    const el = document.getElementById("sf-countdown-value");
+    if (el) el.textContent = m > 0 ? `${m}m ${String(s).padStart(2,"0")}s` : `${s}s`;
+  }
+  async function lockSF() { await fetch("/api/secure-folder/lock", {method:"POST"}); hideSFCard(); showToast("Secure Folder locked"); }
+  function copySFPassword() {
+    const pw = document.getElementById("sf-password-value").textContent;
+    if (!pw || pw === "—") return;
+    navigator.clipboard.writeText(pw).then(() => showToast("Password copied!"));
+  }
+  async function saveSFPassword() {
+    const pw = document.getElementById("sf-password-input").value;
+    if (!pw.trim()) { showToast("Enter a password first"); return; }
+    const res = await fetch("/api/secure-folder/password", { method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({password:pw}) });
+    if (res.ok) {
+      document.getElementById("sf-password-input").value = "";
+      document.getElementById("sf-password-status").textContent = "✓ Password saved";
+      showToast("Password saved!");
+    }
+  }
+  async function clearSFPassword() {
+    await fetch("/api/secure-folder/password", { method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({password:""}) });
+    document.getElementById("sf-password-status").textContent = "No password set";
+    showToast("Password cleared");
   }
 
   // ── Notifications ──────────────────────────────────────────────────────────
   function requestNotifPermission() {
-    if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
-    }
+    if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
   }
-
   function sendNotification(title, body) {
-    if (!("Notification" in window)) return;
-    if (Notification.permission === "granted") {
-      new Notification(title, { body, icon: "/favicon.ico" });
-    }
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    new Notification(title, { body, icon: "/favicon.ico" });
   }
 
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+  function escHtml(str) { return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+  function showToast(msg) {
+    const t = document.getElementById("toast"); t.textContent = msg; t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 2400);
+  }
+
+  // ── Init ───────────────────────────────────────────────────────────────────
   loadRewards();
   loadPunishments();
   loadScore();
