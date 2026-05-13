@@ -952,6 +952,7 @@
         sfCountdownInterval = null;
         hideSFCard();
         showToast("Secure Folder locked");
+        sendNotification("Reward time is over", "Your Secure Folder has been locked again.");
       } else {
         updateCountdownDisplay(secs);
       }
@@ -1103,10 +1104,25 @@
     showToast("Punishments saved!");
   }
 
+  // ── Notifications ──────────────────────────────────────────────────────────
+  function requestNotifPermission() {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }
+
+  function sendNotification(title, body) {
+    if (!("Notification" in window)) return;
+    if (Notification.permission === "granted") {
+      new Notification(title, { body, icon: "/favicon.ico" });
+    }
+  }
+
   loadRewards();
   loadPunishments();
   loadScore();
   loadSFStatus();
+  requestNotifPermission();
 </script>
 {% endif %}
 
