@@ -415,6 +415,25 @@ def index():
     return render_template("index.html", logged_in="access_token" in session)
 
 
+@app.route("/sw.js")
+def service_worker():
+    sw_code = """
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', e => e.waitUntil(clients.claim()));
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(clients.matchAll({type:'window'}).then(list => {
+    if (list.length) return list[0].focus();
+    return clients.openWindow('/');
+  }));
+});
+"""
+    from flask import Response
+    return Response(sw_code, mimetype="application/javascript",
+                    headers={"Service-Worker-Allowed": "/",
+                             "Cache-Control": "no-cache"})
+
+
 @app.route("/login")
 def login():
     auth_url = (

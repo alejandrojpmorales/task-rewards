@@ -481,6 +481,15 @@
     <button class="btn btn-primary" onclick="saveConfig()" style="width:100%;margin-top:16px;padding:11px;text-align:center">Save</button>
   </div>
 
+  <div class="section-title" style="margin-bottom:16px">Notifications</div>
+  <div class="card" style="margin-bottom:24px">
+    <div style="font-size:0.82rem;color:var(--muted);margin-bottom:12px">
+      Used for: inactivity warning (4h left before wipe) and Secure Folder lock alert.
+    </div>
+    <div id="notif-diag" style="font-size:0.78rem;color:var(--muted);margin-bottom:14px;line-height:1.6">—</div>
+    <button class="btn btn-primary" onclick="testNotification()" style="width:100%;padding:11px;text-align:center">🔔 Send test notification</button>
+  </div>
+
   <div class="section-title" style="margin-bottom:16px">Goals & limits</div>
   <div class="card" style="margin-bottom:24px">
     <div style="display:flex;flex-direction:column;gap:14px">
@@ -1095,12 +1104,51 @@
   }
 
   // ── Notifications ──────────────────────────────────────────────────────────
-  function requestNotifPermission() {
-    if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
+  let swReg = null;
+
+  async function initNotifications() {
+    if (!("Notification" in window)) return;
+    // Register service worker (required for Android PWA notifications)
+    if ("serviceWorker" in navigator) {
+      try {
+        swReg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+        console.log("[SW] registered:", swReg.scope);
+      } catch(e) { console.warn("[SW] registration failed:", e); }
+    }
+    if (Notification.permission === "default") {
+      await Notification.requestPermission();
+    }
+    updateNotifDiag();
   }
-  function sendNotification(title, body) {
+
+  async function sendNotification(title, body) {
     if (!("Notification" in window) || Notification.permission !== "granted") return;
-    new Notification(title, { body, icon: "/favicon.ico" });
+    const reg = swReg || (await navigator.serviceWorker.ready.catch(() => null));
+    if (reg) {
+      reg.showNotification(title, { body, icon: "/favicon.ico", badge: "/favicon.ico" });
+    } else {
+      // Fallback for desktop browsers without SW
+      new Notification(title, { body, icon: "/favicon.ico" });
+    }
+  }
+
+  async function testNotification() {
+    if (Notification.permission !== "granted") {
+      const p = await Notification.requestPermission();
+      updateNotifDiag();
+      if (p !== "granted") { showToast("Permission denied — enable notifications in browser settings"); return; }
+    }
+    await sendNotification("🔔 Test notification", "Notifications are working!");
+    showToast("Test notification sent!");
+  }
+
+  function updateNotifDiag() {
+    const el = document.getElementById("notif-diag");
+    if (!el) return;
+    const perm = "Notification" in window ? Notification.permission : "unsupported";
+    const sw   = "serviceWorker" in navigator ? "supported" : "unsupported";
+    const reg  = swReg ? "registered ✓" : "not registered";
+    el.innerHTML = `Permission: <strong style="color:${perm==='granted'?'var(--accent)':perm==='denied'?'#f87171':'var(--gold)'}">${perm}</strong> &nbsp;|&nbsp; Service Worker: ${sw} / ${reg}`;
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -1115,7 +1163,7 @@
   loadPunishments();
   loadScore();
   loadSFStatus();
-  requestNotifPermission();
+  initNotifications();
 </script>
 {% endif %}
 
