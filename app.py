@@ -30,11 +30,15 @@ HIGH_PRIORITY = 5
 
 # Maps TickTick timer name → scoring key
 FOCUS_NAME_MAP = {
-    "Work":          "focus_work",
-    "Homework":      "focus_homework",
-    "Thesis":        "focus_thesis",
-    "LONG meeting":  "focus_long_meeting",
-    "SHORT meeting": "focus_short_meeting",
+    "Work":                  "focus_work",
+    "Homework":              "focus_homework",
+    "Thesis":                "focus_thesis",
+    "LONG meeting":          "focus_long_meeting",
+    "SHORT meeting":         "focus_short_meeting",
+    "Digital Housekeeping":  "focus_digital_housekeeping",
+    "Cleaning and ordering": "focus_cleaning",
+    "Morning routine":       "focus_morning_routine",
+    "Cooking":               "focus_cooking",
 }
 
 DEFAULT_SCORING = {
@@ -46,11 +50,15 @@ DEFAULT_SCORING = {
     "tag_pomo6":          1.2,
     "tag_pomo8":          1.6,
     "habit":              1.0,
-    "focus_work":         1.0,
-    "focus_homework":     1.2,
-    "focus_thesis":       2.0,
-    "focus_long_meeting": 0.5,
-    "focus_short_meeting":0.3,
+    "focus_work":                 1.0,
+    "focus_homework":             1.2,
+    "focus_thesis":               2.0,
+    "focus_long_meeting":         0.5,
+    "focus_short_meeting":        0.3,
+    "focus_digital_housekeeping": 0.5,
+    "focus_cleaning":             0.5,
+    "focus_morning_routine":      0.3,
+    "focus_cooking":              0.3,
 }
 
 # Upstash Redis credentials (set in production env vars; absent = use local files)

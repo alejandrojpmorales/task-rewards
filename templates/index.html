@@ -522,6 +522,26 @@
         <input id="cfg-focus-short" type="number" min="0" step="0.1"
                style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
       </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.9rem">🖥️ Digital Housekeeping</span>
+        <input id="cfg-focus-digital" type="number" min="0" step="0.1"
+               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.9rem">🧹 Cleaning and ordering</span>
+        <input id="cfg-focus-cleaning" type="number" min="0" step="0.1"
+               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.9rem">🌅 Morning routine</span>
+        <input id="cfg-focus-morning" type="number" min="0" step="0.1"
+               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.9rem">🍳 Cooking</span>
+        <input id="cfg-focus-cooking" type="number" min="0" step="0.1"
+               style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:0.9rem;text-align:center;outline:none" />
+      </div>
     </div>
     <button class="btn btn-primary" onclick="saveConfig()"
             style="width:100%;margin-top:16px;padding:11px;text-align:center">
@@ -801,8 +821,12 @@
     document.getElementById("cfg-focus-work").value    = s.focus_work         ?? 1.0;
     document.getElementById("cfg-focus-homework").value= s.focus_homework     ?? 1.2;
     document.getElementById("cfg-focus-thesis").value  = s.focus_thesis       ?? 2.0;
-    document.getElementById("cfg-focus-long").value    = s.focus_long_meeting ?? 0.5;
-    document.getElementById("cfg-focus-short").value   = s.focus_short_meeting?? 0.3;
+    document.getElementById("cfg-focus-long").value    = s.focus_long_meeting          ?? 0.5;
+    document.getElementById("cfg-focus-short").value   = s.focus_short_meeting         ?? 0.3;
+    document.getElementById("cfg-focus-digital").value = s.focus_digital_housekeeping  ?? 0.5;
+    document.getElementById("cfg-focus-cleaning").value= s.focus_cleaning              ?? 0.5;
+    document.getElementById("cfg-focus-morning").value = s.focus_morning_routine       ?? 0.3;
+    document.getElementById("cfg-focus-cooking").value = s.focus_cooking               ?? 0.3;
   }
 
   async function saveConfig() {
@@ -818,8 +842,12 @@
       focus_work:          parseFloat(document.getElementById("cfg-focus-work").value)    || 0,
       focus_homework:      parseFloat(document.getElementById("cfg-focus-homework").value)|| 0,
       focus_thesis:        parseFloat(document.getElementById("cfg-focus-thesis").value)  || 0,
-      focus_long_meeting:  parseFloat(document.getElementById("cfg-focus-long").value)    || 0,
-      focus_short_meeting: parseFloat(document.getElementById("cfg-focus-short").value)   || 0,
+      focus_long_meeting:          parseFloat(document.getElementById("cfg-focus-long").value)    || 0,
+      focus_short_meeting:         parseFloat(document.getElementById("cfg-focus-short").value)   || 0,
+      focus_digital_housekeeping:  parseFloat(document.getElementById("cfg-focus-digital").value) || 0,
+      focus_cleaning:              parseFloat(document.getElementById("cfg-focus-cleaning").value)|| 0,
+      focus_morning_routine:       parseFloat(document.getElementById("cfg-focus-morning").value) || 0,
+      focus_cooking:               parseFloat(document.getElementById("cfg-focus-cooking").value) || 0,
     };
     const res = await fetch("/api/config", {
       method: "PUT",
