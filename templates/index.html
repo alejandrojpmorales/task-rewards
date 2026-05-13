@@ -66,6 +66,25 @@
     .next-reward-hint { font-size: 0.75rem; color: var(--muted); text-align: right; margin-bottom: 16px; }
     .next-reward-hint strong { color: var(--gold); }
 
+    .next-reward-pick {
+      background: none; border: 1px solid var(--border); border-radius: 6px;
+      color: var(--muted); font-size: 0.72rem; padding: 2px 7px; cursor: pointer;
+      transition: border-color 0.2s, color 0.2s; margin-left: 6px;
+    }
+    .next-reward-pick:hover { border-color: var(--gold); color: var(--gold); }
+    .reward-picker-dropdown {
+      position: absolute; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 6px 0; z-index: 200; min-width: 180px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4); margin-top: 4px;
+    }
+    .reward-picker-dropdown button {
+      display: block; width: 100%; text-align: left; background: none; border: none;
+      color: var(--text); font-size: 0.85rem; padding: 8px 14px; cursor: pointer;
+    }
+    .reward-picker-dropdown button:hover { background: var(--surface3, #2a2a3a); }
+    .reward-picker-dropdown button.active { color: var(--gold); }
+    .reward-picker-wrap { position: relative; display: inline-block; }
+
     .date-badge {
       display: inline-block; background: var(--surface2); border: 1px solid var(--border);
       border-radius: 20px; padding: 4px 14px; font-size: 0.78rem; color: var(--muted); margin-bottom: 16px;
@@ -334,7 +353,13 @@
 <!-- Next reward hint -->
 <div class="progress-wrap" id="next-reward-wrap" style="display:none">
   <div class="progress-label">
-    <span id="next-reward-label">Next reward</span>
+    <span>
+      <span id="next-reward-label">Next reward</span>
+      <span class="reward-picker-wrap">
+        <button class="next-reward-pick" id="next-reward-pick-btn" onclick="toggleRewardPicker()">▾</button>
+        <div class="reward-picker-dropdown" id="reward-picker-dropdown" style="display:none"></div>
+      </span>
+    </span>
     <span id="next-reward-pts"></span>
   </div>
   <div class="progress-track">
@@ -604,17 +629,63 @@
     }
   }
 
+  let pinnedRewardName = localStorage.getItem("pinnedReward") || null;
+
   function renderNextReward() {
     const wrap = document.getElementById("next-reward-wrap");
-    const affordable = currentRewards.filter(r => r.cost <= currentBalance);
-    const next = currentRewards.filter(r => r.cost > currentBalance).sort((a,b) => a.cost - b.cost)[0];
-    if (!next) { wrap.style.display = "none"; return; }
+    if (!currentRewards.length) { wrap.style.display = "none"; return; }
+
+    // Resolve target: pinned > next cheapest unaffordable > cheapest affordable
+    let target = null;
+    if (pinnedRewardName) {
+      target = currentRewards.find(r => r.name === pinnedRewardName) || null;
+    }
+    if (!target) {
+      target = currentRewards.filter(r => r.cost > currentBalance).sort((a,b) => a.cost - b.cost)[0]
+            || currentRewards.slice().sort((a,b) => a.cost - b.cost)[0];
+    }
+    if (!target) { wrap.style.display = "none"; return; }
+
     wrap.style.display = "";
-    const pct = Math.min(100, (currentBalance / next.cost) * 100);
+    const pct = Math.min(100, (currentBalance / target.cost) * 100);
     document.getElementById("next-reward-bar").style.width = pct + "%";
-    document.getElementById("next-reward-label").textContent = `→ ${next.name}`;
-    document.getElementById("next-reward-pts").textContent   = `${currentBalance.toFixed(1)} / ${next.cost} pts`;
+    document.getElementById("next-reward-label").textContent = `→ ${target.name}`;
+    document.getElementById("next-reward-pts").textContent   = `${currentBalance.toFixed(1)} / ${target.cost} pts`;
   }
+
+  function toggleRewardPicker() {
+    const dd = document.getElementById("reward-picker-dropdown");
+    if (dd.style.display !== "none") { dd.style.display = "none"; return; }
+    // Build list
+    dd.innerHTML = "";
+    // "Auto" option
+    const autoBtn = document.createElement("button");
+    autoBtn.textContent = "Auto (next cheapest)";
+    if (!pinnedRewardName) autoBtn.classList.add("active");
+    autoBtn.onclick = () => { pinnedRewardName = null; localStorage.removeItem("pinnedReward"); dd.style.display = "none"; renderNextReward(); };
+    dd.appendChild(autoBtn);
+    // Separator line
+    const sep = document.createElement("div");
+    sep.style.cssText = "border-top:1px solid var(--border);margin:4px 0";
+    dd.appendChild(sep);
+    // Each reward
+    currentRewards.slice().sort((a,b) => a.cost - b.cost).forEach(r => {
+      const btn = document.createElement("button");
+      btn.textContent = `${r.name}  (${r.cost} pts)`;
+      if (r.name === pinnedRewardName) btn.classList.add("active");
+      btn.onclick = () => { pinnedRewardName = r.name; localStorage.setItem("pinnedReward", r.name); dd.style.display = "none"; renderNextReward(); };
+      dd.appendChild(btn);
+    });
+    dd.style.display = "";
+  }
+
+  // Close picker when clicking outside
+  document.addEventListener("click", e => {
+    const wrap = document.querySelector(".reward-picker-wrap");
+    if (wrap && !wrap.contains(e.target)) {
+      document.getElementById("reward-picker-dropdown").style.display = "none";
+    }
+  });
 
   // ── Rewards ────────────────────────────────────────────────────────────────
   async function loadRewards() {
