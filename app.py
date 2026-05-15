@@ -681,7 +681,13 @@ def redeem():
         sf_status = get_secure_folder_status(wallet)
 
     save_wallet(wallet)
-    return jsonify({"balance": wallet["balance"], "redeemed": reward["name"], "secure_folder": sf_status})
+    unlock_minutes_out = int(reward.get("unlock_minutes") or 0) or 30
+    return jsonify({
+        "balance": wallet["balance"],
+        "redeemed": reward["name"],
+        "unlock_minutes": unlock_minutes_out,
+        "secure_folder": sf_status,
+    })
 
 
 @app.route("/api/rewards", methods=["GET"])

@@ -751,6 +751,11 @@
       setTimeout(() => el.classList.remove("redeemed-flash"), 800);
       showToast(`✓ Redeemed! Balance: ${currentBalance.toFixed(1)} pts`);
       renderRewards(); renderNextReward();
+
+      // Notify MacroDroid-friendly notification
+      const mins = data.unlock_minutes || 30;
+      sendNotification(`🎁 ${data.redeemed}`, `Break started: ${mins} minutes`);
+
       if (data.secure_folder && data.secure_folder.unlocked) {
         renderSFCard(data.secure_folder);
         startSFCountdown(data.secure_folder.seconds_left);
