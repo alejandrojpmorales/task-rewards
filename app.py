@@ -187,6 +187,10 @@ def load_wallet() -> dict:
         w.setdefault("balance_cap", None)
         w.setdefault("active_multiplier", 1.0)
         w.setdefault("transactions", [])
+        w.setdefault("last_break_at", None)
+        w.setdefault("daily_break_count", 0)
+        w.setdefault("daily_break_date", None)
+        w.setdefault("max_breaks_per_day", 3)
         return w
     return {"balance": 0.0, "credited_date": "", "credited_today": 0.0,
             "rewards": DEFAULT_REWARDS, "punishments": DEFAULT_PUNISHMENTS,
@@ -194,7 +198,9 @@ def load_wallet() -> dict:
             "secure_folder": {"password": None, "active_unlock": None},
             "last_activity_at": None, "inactivity_punished_at": None,
             "streak": 0, "last_active_date": None, "daily_goal": 8.0,
-            "balance_cap": None, "active_multiplier": 1.0, "transactions": []}
+            "balance_cap": None, "active_multiplier": 1.0, "transactions": [],
+            "last_break_at": None, "daily_break_count": 0,
+            "daily_break_date": None, "max_breaks_per_day": 3}
 
 
 def save_wallet(wallet: dict):
@@ -617,6 +623,8 @@ def get_config():
         "daily_goal": wallet.get("daily_goal", 8.0),
         "balance_cap": wallet.get("balance_cap"),
         "active_multiplier": wallet.get("active_multiplier", 1.0),
+        "max_breaks_per_day": wallet.get("max_breaks_per_day", 3),
+        "daily_break_count": wallet.get("daily_break_count", 0),
     })
 
 
@@ -647,12 +655,17 @@ def update_config():
         wallet["active_multiplier"] = max(1.0, float(data.get("active_multiplier", 1.0)))
     except (ValueError, TypeError):
         pass
+    try:
+        wallet["max_breaks_per_day"] = max(1, int(data.get("max_breaks_per_day", wallet.get("max_breaks_per_day", 3))))
+    except (ValueError, TypeError):
+        pass
     save_wallet(wallet)
     return jsonify({
         "scoring": clean,
         "daily_goal": wallet["daily_goal"],
         "balance_cap": wallet["balance_cap"],
         "active_multiplier": wallet["active_multiplier"],
+        "max_breaks_per_day": wallet["max_breaks_per_day"],
     })
 
 
@@ -667,6 +680,42 @@ def redeem():
         return jsonify({"error": "reward not found"}), 404
     if wallet["balance"] < reward["cost"]:
         return jsonify({"error": "insufficient_balance", "balance": wallet["balance"]}), 400
+
+    # Break cooldown + daily budget enforcement
+    is_break = int(reward.get("unlock_minutes") or 0) > 0
+    if is_break:
+        now = datetime.now(timezone.utc)
+        today_str = now.date().isoformat()
+
+        # Reset daily count if it's a new day
+        if wallet.get("daily_break_date") != today_str:
+            wallet["daily_break_count"] = 0
+            wallet["daily_break_date"] = today_str
+
+        # Check daily budget
+        max_breaks = int(wallet.get("max_breaks_per_day") or 3)
+        if wallet["daily_break_count"] >= max_breaks:
+            return jsonify({
+                "error": "daily_break_limit",
+                "breaks_today": wallet["daily_break_count"],
+                "max_breaks": max_breaks,
+            }), 400
+
+        # Check 25-min cooldown
+        last_break_at = wallet.get("last_break_at")
+        if last_break_at:
+            elapsed = (now - datetime.fromisoformat(last_break_at)).total_seconds()
+            cooldown = 25 * 60
+            if elapsed < cooldown:
+                minutes_left = int((cooldown - elapsed) // 60) + 1
+                return jsonify({
+                    "error": "break_cooldown",
+                    "minutes_left": minutes_left,
+                }), 400
+
+        wallet["last_break_at"] = now.isoformat()
+        wallet["daily_break_count"] = wallet.get("daily_break_count", 0) + 1
+
     wallet["balance"] = round(wallet["balance"] - reward["cost"], 1)
     add_transaction(wallet, "redeem", f"Redeemed: {reward['name']}", -reward["cost"])
 
@@ -687,6 +736,8 @@ def redeem():
         "redeemed": reward["name"],
         "unlock_minutes": unlock_minutes_out,
         "secure_folder": sf_status,
+        "breaks_today": wallet.get("daily_break_count", 0),
+        "max_breaks_per_day": wallet.get("max_breaks_per_day", 3),
     })
 
 

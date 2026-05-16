@@ -229,6 +229,22 @@
     .modal-actions { display: flex; gap: 10px; }
     .modal-actions .btn { flex: 1; text-align: center; padding: 12px; }
 
+    /* Urge surfing overlay */
+    .urge-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; text-align: center; }
+    .urge-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; color: var(--accent); }
+    .urge-sub { font-size: 0.9rem; color: var(--muted); margin-bottom: 32px; max-width: 260px; line-height: 1.6; }
+    .urge-circle {
+      width: 130px; height: 130px; border-radius: 50%;
+      border: 4px solid var(--border); border-top-color: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 28px; position: relative;
+      animation: urge-spin 4s linear infinite;
+    }
+    @keyframes urge-spin { to { transform: rotate(360deg); } }
+    .urge-timer { font-size: 2.2rem; font-weight: 800; color: var(--text); animation: none; position: absolute; }
+    .urge-cancel { font-size: 0.82rem; color: var(--muted); text-decoration: underline; cursor: pointer; margin-top: 8px; }
+    .break-counter-chip { font-size: 0.72rem; background: rgba(251,146,60,0.12); border: 1px solid rgba(251,146,60,0.3); color: var(--orange); border-radius: 20px; padding: 3px 10px; }
+
     /* History tab */
     .history-day {
       background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
@@ -278,6 +294,17 @@
 
 <div id="error" class="error-msg" style="display:none"></div>
 
+<!-- Urge surfing overlay -->
+<div id="urge-overlay" class="urge-overlay" style="display:none">
+  <div class="urge-title">⏸ Pause for a moment</div>
+  <div class="urge-sub">Take a breath. If you still want the break in 1 minute, it's yours.</div>
+  <div class="urge-circle">
+    <span class="urge-timer" id="urge-timer">60</span>
+  </div>
+  <div style="font-size:0.85rem;color:var(--muted);max-width:240px;line-height:1.7" id="urge-intention"></div>
+  <div class="urge-cancel" onclick="cancelUrge()" style="margin-top:24px">Cancel — I don't need the break</div>
+</div>
+
 <!-- Confirmation modal -->
 <div id="confirm-modal" class="modal-overlay" style="display:none">
   <div class="modal-box">
@@ -319,10 +346,11 @@
   <div class="msg" id="weekly-msg"></div>
 </div>
 
-<!-- Streak + multiplier -->
+<!-- Streak + multiplier + break counter -->
 <div class="stat-row">
   <div class="stat-chip streak" id="streak-chip">🔥 0 day streak</div>
   <div class="stat-chip multiplier" id="multiplier-chip" style="display:none">⚡ 2× multiplier</div>
+  <div class="break-counter-chip" id="break-counter-chip" style="display:none"></div>
 </div>
 
 <!-- Score + Balance -->
@@ -504,6 +532,10 @@
       <div class="cfg-row">
         <div><div class="cfg-label">⚡ Score multiplier</div><div class="cfg-sub">Multiply all earned pts</div></div>
         <input id="cfg-multiplier" type="number" min="1" step="0.5" class="cfg-input" />
+      </div>
+      <div class="cfg-row">
+        <div><div class="cfg-label">☕ Max breaks per day</div><div class="cfg-sub">Hard limit on break rewards</div></div>
+        <input id="cfg-max-breaks" type="number" min="1" step="1" class="cfg-input" />
       </div>
     </div>
     <button class="btn btn-primary" onclick="saveConfig()" style="width:100%;margin-top:16px;padding:11px;text-align:center">Save</button>
@@ -736,31 +768,84 @@
     }
   }
 
+  let urgeCallback = null;
+  let urgeInterval = null;
+
+  function startUrge(cb) {
+    urgeCallback = cb;
+    let secs = 60;
+    document.getElementById("urge-timer").textContent = secs;
+    document.getElementById("urge-overlay").style.display = "flex";
+    urgeInterval = setInterval(() => {
+      secs--;
+      document.getElementById("urge-timer").textContent = secs;
+      if (secs <= 0) {
+        clearInterval(urgeInterval); urgeInterval = null;
+        document.getElementById("urge-overlay").style.display = "none";
+        if (urgeCallback) urgeCallback();
+        urgeCallback = null;
+      }
+    }, 1000);
+  }
+
+  function cancelUrge() {
+    clearInterval(urgeInterval); urgeInterval = null;
+    document.getElementById("urge-overlay").style.display = "none";
+    urgeCallback = null;
+    showToast("Break cancelled — nice work 💪");
+  }
+
+  async function doRedeem(rewardId, rewardName, cost, el) {
+    const res = await fetch("/api/redeem", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({reward_id: rewardId}),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      if (data.error === "insufficient_balance") { showToast("Not enough points!"); return; }
+      if (data.error === "break_cooldown") {
+        showToast(`⏳ Cooldown: ${data.minutes_left} min left before next break`); return;
+      }
+      if (data.error === "daily_break_limit") {
+        showToast(`🚫 Daily break limit reached (${data.max_breaks} breaks)`); return;
+      }
+      showToast("Error redeeming"); return;
+    }
+    currentBalance = data.balance;
+    document.getElementById("balance").textContent = currentBalance.toFixed(1);
+    el.classList.add("redeemed-flash");
+    setTimeout(() => el.classList.remove("redeemed-flash"), 800);
+    showToast(`✓ Redeemed! Balance: ${currentBalance.toFixed(1)} pts`);
+    renderRewards(); renderNextReward();
+    updateBreakChip(data.breaks_today, data.max_breaks_per_day);
+
+    // MacroDroid notification
+    const mins = data.unlock_minutes || 30;
+    sendNotification(`🎁 ${data.redeemed}`, `Break started: ${mins} minutes`);
+
+    if (data.secure_folder && data.secure_folder.unlocked) {
+      renderSFCard(data.secure_folder);
+      startSFCountdown(data.secure_folder.seconds_left);
+    }
+  }
+
   async function redeem(rewardId, rewardName, cost, el) {
     if (editMode || currentBalance < cost) return;
-    showConfirm(`Redeem reward?`, `"${rewardName}" costs ${cost} pts. Balance after: ${(currentBalance - cost).toFixed(1)} pts.`, async () => {
-      const res = await fetch("/api/redeem", {
-        method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({reward_id: rewardId}),
-      });
-      const data = await res.json();
-      if (!res.ok) { showToast(data.error === "insufficient_balance" ? "Not enough points!" : "Error redeeming"); return; }
-      currentBalance = data.balance;
-      document.getElementById("balance").textContent = currentBalance.toFixed(1);
-      el.classList.add("redeemed-flash");
-      setTimeout(() => el.classList.remove("redeemed-flash"), 800);
-      showToast(`✓ Redeemed! Balance: ${currentBalance.toFixed(1)} pts`);
-      renderRewards(); renderNextReward();
-
-      // Notify MacroDroid-friendly notification
-      const mins = data.unlock_minutes || 30;
-      sendNotification(`🎁 ${data.redeemed}`, `Break started: ${mins} minutes`);
-
-      if (data.secure_folder && data.secure_folder.unlocked) {
-        renderSFCard(data.secure_folder);
-        startSFCountdown(data.secure_folder.seconds_left);
+    const isBreak = currentRewards.find(r => r.id === rewardId)?.unlock_minutes > 0;
+    showConfirm(`Redeem reward?`, `"${rewardName}" costs ${cost} pts. Balance after: ${(currentBalance - cost).toFixed(1)} pts.`, () => {
+      if (isBreak) {
+        startUrge(() => doRedeem(rewardId, rewardName, cost, el));
+      } else {
+        doRedeem(rewardId, rewardName, cost, el);
       }
     });
+  }
+
+  function updateBreakChip(breaksToday, maxBreaks) {
+    const chip = document.getElementById("break-counter-chip");
+    if (maxBreaks == null) { chip.style.display = "none"; return; }
+    chip.style.display = "";
+    chip.textContent = `☕ ${breaksToday ?? 0}/${maxBreaks} breaks`;
   }
 
   function toggleEdit()  { editMode = true;  renderRewards(); }
@@ -914,6 +999,8 @@
     document.getElementById("cfg-goal").value          = data.daily_goal        ?? 8;
     document.getElementById("cfg-cap").value           = data.balance_cap       ?? 0;
     document.getElementById("cfg-multiplier").value    = data.active_multiplier ?? 1;
+    document.getElementById("cfg-max-breaks").value    = data.max_breaks_per_day ?? 3;
+    updateBreakChip(data.daily_break_count, data.max_breaks_per_day);
   }
 
   async function saveConfig() {
@@ -938,9 +1025,10 @@
     };
     const payload = {
       scoring,
-      daily_goal:       parseFloat(document.getElementById("cfg-goal").value)       || 8,
-      balance_cap:      parseFloat(document.getElementById("cfg-cap").value)        || 0,
-      active_multiplier:parseFloat(document.getElementById("cfg-multiplier").value) || 1,
+      daily_goal:         parseFloat(document.getElementById("cfg-goal").value)       || 8,
+      balance_cap:        parseFloat(document.getElementById("cfg-cap").value)        || 0,
+      active_multiplier:  parseFloat(document.getElementById("cfg-multiplier").value) || 1,
+      max_breaks_per_day: parseInt(document.getElementById("cfg-max-breaks").value)   || 3,
     };
     const res = await fetch("/api/config", { method: "PUT", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload) });
     if (res.ok) showToast("Settings saved!"); else showToast("Failed to save");
