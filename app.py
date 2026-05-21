@@ -409,6 +409,33 @@ def focus_name(focus: dict) -> str:
 # Pending tasks
 # ---------------------------------------------------------------------------
 
+def estimate_task_hours(task: dict) -> tuple:
+    """Return (min_hours, max_hours) estimate for a task.
+    Calendar blocks (startDate != dueDate) return exact duration.
+    Otherwise uses ⏱️ tag ranges."""
+    start = task.get("startDate") or ""
+    due   = task.get("dueDate")   or ""
+
+    # Calendar block: both dates set, different times
+    if start and due and start[:10] == due[:10] and start != due:
+        try:
+            from datetime import timezone as _tz
+            s = datetime.fromisoformat(start.replace("Z", "+00:00"))
+            d = datetime.fromisoformat(due.replace("Z", "+00:00"))
+            if d > s:
+                h = round((d - s).total_seconds() / 3600, 2)
+                return h, h
+        except Exception:
+            pass
+
+    tags = task.get("tags") or []
+    if "8⏱️" in tags: return 6.0, 8.0
+    if "6⏱️" in tags: return 4.0, 6.0
+    if "4⏱️" in tags: return 2.0, 4.0
+    if "2⏱️" in tags: return 1.0, 2.0
+    return 0.0, 1.0   # no tag → ≤ 1 h
+
+
 def fetch_pending_tasks(headers, scoring=None):
     """Return all active tasks across all projects with estimated scores."""
     projects_resp = requests.get(f"{BASE_URL}/project", headers=headers)
@@ -418,6 +445,7 @@ def fetch_pending_tasks(headers, scoring=None):
     if not isinstance(projects, list):
         return [], None
 
+    today_str = date.today().isoformat()
     results = []
     for project in projects:
         pid = project.get("id")
@@ -431,6 +459,11 @@ def fetch_pending_tasks(headers, scoring=None):
             if task.get("status", 0) != 0:
                 continue
             score, breakdown = task_score(task, scoring)
+            due = task.get("dueDate") or ""
+            start = task.get("startDate") or ""
+            is_today = due[:10] == today_str if due else False
+            is_calendar = bool(start and due and start != due and start[:10] == today_str)
+            h_min, h_max = estimate_task_hours(task)
             results.append({
                 "id": task.get("id"),
                 "title": task.get("title", "Untitled"),
@@ -439,7 +472,12 @@ def fetch_pending_tasks(headers, scoring=None):
                 "tags": task.get("tags") or [],
                 "score": score,
                 "breakdown": breakdown,
-                "dueDate": task.get("dueDate", ""),
+                "dueDate": due,
+                "startDate": start,
+                "is_today": is_today or is_calendar,
+                "is_calendar": is_calendar,
+                "hours_min": h_min,
+                "hours_max": h_max,
             })
 
     results.sort(key=lambda t: t["score"], reverse=True)
@@ -642,7 +680,20 @@ def get_pending():
     tasks, err = fetch_pending_tasks(auth_headers(), wallet.get("scoring", DEFAULT_SCORING))
     if err:
         return jsonify({"error": err}), 502
-    return jsonify({"tasks": tasks, "count": len(tasks)})
+
+    today_tasks = [t for t in tasks if t.get("is_today")]
+    total_min = round(sum(t["hours_min"] for t in today_tasks), 1)
+    total_max = round(sum(t["hours_max"] for t in today_tasks), 1)
+    calendar_count = sum(1 for t in today_tasks if t.get("is_calendar"))
+
+    return jsonify({
+        "tasks": tasks,
+        "count": len(tasks),
+        "today_count": len(today_tasks),
+        "hours_min": total_min,
+        "hours_max": total_max,
+        "calendar_count": calendar_count,
+    })
 
 
 @app.route("/api/config", methods=["GET"])

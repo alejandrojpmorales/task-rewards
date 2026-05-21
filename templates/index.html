@@ -460,6 +460,7 @@
   <button class="refresh-btn" id="pending-btn" onclick="loadPending()">
     <span id="pending-icon">↻</span> Refresh tasks
   </button>
+  <div id="workload-banner" style="display:none;background:rgba(124,106,247,0.1);border:1px solid rgba(124,106,247,0.25);border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:0.88rem;color:var(--text)"></div>
   <div class="section-title" style="margin-bottom:10px" id="pending-count"></div>
   <div class="task-list" id="pending-list"></div>
 </div>
@@ -1107,7 +1108,26 @@
     try {
       const res = await fetch("/api/pending"); const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed");
-      document.getElementById("pending-count").textContent = `${data.count} task${data.count !== 1 ? "s" : ""} pending`;
+
+      // Header: task count + hour estimate
+      const hMin = data.hours_min ?? 0, hMax = data.hours_max ?? 0;
+      const hrStr = hMin === hMax
+        ? (hMin === 0 ? "" : `~${hMin}h`)
+        : `~${hMin}–${hMax}h`;
+      const calStr = data.calendar_count ? ` · ${data.calendar_count} calendar block${data.calendar_count > 1 ? "s" : ""}` : "";
+      const todayStr = data.today_count ? ` (${data.today_count} today${calStr})` : "";
+      document.getElementById("pending-count").textContent =
+        `${data.count} task${data.count !== 1 ? "s" : ""} pending${todayStr}`;
+
+      // Workload banner
+      const banner = document.getElementById("workload-banner");
+      if (hMax > 0) {
+        banner.style.display = "";
+        banner.innerHTML = `⏱️ <strong>Today's workload: ${hrStr}</strong>${hMin !== hMax ? `<span style="color:var(--muted);font-size:0.78rem;margin-left:6px">(${hMin}h optimistic · ${hMax}h pessimistic)</span>` : ""}`;
+      } else {
+        banner.style.display = "none";
+      }
+
       renderPending(data.tasks);
     } catch(err) {
       document.getElementById("pending-list").innerHTML = `<div class="empty-state"><p>Error: ${escHtml(err.message)}</p></div>`;
@@ -1117,15 +1137,41 @@
   function renderPending(tasks) {
     const list = document.getElementById("pending-list");
     if (!tasks || !tasks.length) { list.innerHTML = `<div class="empty-state"><div class="emoji">✅</div><p>No pending tasks!</p></div>`; return; }
-    list.innerHTML = tasks.map(t => {
+
+    // Group: today first, then the rest
+    const today = tasks.filter(t => t.is_today);
+    const other = tasks.filter(t => !t.is_today);
+    const grouped = [
+      ...(today.length ? [null, ...today] : []),   // null = today divider
+      ...(other.length && today.length ? ["other", ...other] : other),
+    ];
+
+    list.innerHTML = grouped.map(t => {
+      if (t === null) return `<div style="font-size:0.72rem;color:var(--accent);font-weight:600;letter-spacing:0.08em;text-transform:uppercase;margin:4px 0 2px">📅 Today</div>`;
+      if (t === "other") return `<div style="font-size:0.72rem;color:var(--muted);font-weight:600;letter-spacing:0.08em;text-transform:uppercase;margin:10px 0 2px">Upcoming</div>`;
+
       const badges = [];
+      if (t.is_calendar)                 badges.push(`<span class="badge" style="background:rgba(94,234,212,0.12);border-color:rgba(94,234,212,0.3);color:var(--accent2)">📅 Block</span>`);
       if (t.priority === 5)              badges.push(`<span class="badge badge-priority">⚡ High</span>`);
       if ((t.tags||[]).includes("🐸"))   badges.push(`<span class="badge badge-frog">🐸</span>`);
-      if ((t.tags||[]).includes("4⏱️")) badges.push(`<span class="badge badge-pomo">4⏱️</span>`);
-      if ((t.tags||[]).includes("6⏱️")) badges.push(`<span class="badge badge-pomo">6⏱️</span>`);
       if ((t.tags||[]).includes("8⏱️")) badges.push(`<span class="badge badge-pomo">8⏱️</span>`);
+      if ((t.tags||[]).includes("6⏱️")) badges.push(`<span class="badge badge-pomo">6⏱️</span>`);
+      if ((t.tags||[]).includes("4⏱️")) badges.push(`<span class="badge badge-pomo">4⏱️</span>`);
       if ((t.tags||[]).includes("2⏱️")) badges.push(`<span class="badge badge-pomo">2⏱️</span>`);
-      return `<div class="task-item"><div class="task-info"><div class="task-title">${escHtml(t.title)}</div><div class="task-badges">${badges.join("")}<span class="pending-project">${escHtml(t.project)}</span></div></div><div class="pending-score">+${t.score}</div></div>`;
+
+      const hMin = t.hours_min ?? 0, hMax = t.hours_max ?? 0;
+      const hrLabel = t.is_calendar
+        ? `${hMin}h`
+        : (hMin === hMax ? (hMax <= 1 ? "≤1h" : `${hMax}h`) : `${hMin}–${hMax}h`);
+      const hrBit = `<span style="font-size:0.7rem;color:var(--muted);margin-left:4px">${hrLabel}</span>`;
+
+      return `<div class="task-item">
+        <div class="task-info">
+          <div class="task-title">${escHtml(t.title)}${hrBit}</div>
+          <div class="task-badges">${badges.join("")}<span class="pending-project">${escHtml(t.project)}</span></div>
+        </div>
+        <div class="pending-score">+${t.score}</div>
+      </div>`;
     }).join("");
   }
 
