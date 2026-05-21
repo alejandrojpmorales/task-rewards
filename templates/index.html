@@ -511,6 +511,7 @@
       <div class="cfg-row"><span class="cfg-label">🧹 Cleaning and ordering</span><input id="cfg-focus-cleaning" type="number" min="0" step="0.1" class="cfg-input" /></div>
       <div class="cfg-row"><span class="cfg-label">🌅 Morning routine</span><input id="cfg-focus-morning" type="number" min="0" step="0.1" class="cfg-input" /></div>
       <div class="cfg-row"><span class="cfg-label">🍳 Cooking</span><input id="cfg-focus-cooking" type="number" min="0" step="0.1" class="cfg-input" /></div>
+      <div class="cfg-row"><span class="cfg-label">🎓 Class</span><input id="cfg-focus-class" type="number" min="0" step="0.1" class="cfg-input" /></div>
     </div>
     <button class="btn btn-primary" onclick="saveConfig()" style="width:100%;margin-top:16px;padding:11px;text-align:center">Save</button>
   </div>
@@ -1053,6 +1054,7 @@
     document.getElementById("cfg-focus-cleaning").value= s.focus_cleaning ?? 0.5;
     document.getElementById("cfg-focus-morning").value = s.focus_morning_routine ?? 0.3;
     document.getElementById("cfg-focus-cooking").value = s.focus_cooking ?? 0.3;
+    document.getElementById("cfg-focus-class").value   = s.focus_class ?? 0.2;
     document.getElementById("cfg-goal").value          = data.daily_goal        ?? 8;
     document.getElementById("cfg-cap").value           = data.balance_cap       ?? 0;
     document.getElementById("cfg-multiplier").value    = data.active_multiplier ?? 1;
@@ -1079,6 +1081,7 @@
       focus_cleaning:              parseFloat(document.getElementById("cfg-focus-cleaning").value) || 0,
       focus_morning_routine:       parseFloat(document.getElementById("cfg-focus-morning").value)  || 0,
       focus_cooking:               parseFloat(document.getElementById("cfg-focus-cooking").value)  || 0,
+      focus_class:                 parseFloat(document.getElementById("cfg-focus-class").value)    || 0,
     };
     const payload = {
       scoring,

@@ -39,6 +39,7 @@ FOCUS_NAME_MAP = {
     "Cleaning and ordering": "focus_cleaning",
     "Morning routine":       "focus_morning_routine",
     "Cooking":               "focus_cooking",
+    "Class":                 "focus_class",
 }
 
 DEFAULT_SCORING = {
@@ -59,6 +60,7 @@ DEFAULT_SCORING = {
     "focus_cleaning":             0.5,
     "focus_morning_routine":      0.3,
     "focus_cooking":              0.3,
+    "focus_class":                0.2,
 }
 
 # Upstash Redis credentials (set in production env vars; absent = use local files)
@@ -68,13 +70,13 @@ UPSTASH_TOKEN = os.environ.get("UPSTASH_REDIS_REST_TOKEN")
 _DATA_DIR = Path(os.environ.get("DATA_DIR", Path(__file__).parent))
 
 DEFAULT_REWARDS = [
-    {"id": str(uuid.uuid4()), "name": "5 mins break",             "cost": 1},
-    {"id": str(uuid.uuid4()), "name": "5 mins break + snack",     "cost": 2},
-    {"id": str(uuid.uuid4()), "name": "30 mins snack walk",       "cost": 8},
-    {"id": str(uuid.uuid4()), "name": "30 mins of Grind",         "cost": 12},
-    {"id": str(uuid.uuid4()), "name": "30 mins of Jack",          "cost": 12},
-    {"id": str(uuid.uuid4()), "name": "30 mins of TV",            "cost": 12},
-    {"id": str(uuid.uuid4()), "name": "30 mins of doomscrolling", "cost": 12},
+    {"id": str(uuid.uuid4()), "name": "5 min break",              "cost": 1},
+    {"id": str(uuid.uuid4()), "name": "5 min break + snack",      "cost": 2},
+    {"id": str(uuid.uuid4()), "name": "30 min walk",              "cost": 8},
+    {"id": str(uuid.uuid4()), "name": "30 min gaming",            "cost": 12},
+    {"id": str(uuid.uuid4()), "name": "30 min social media",      "cost": 12},
+    {"id": str(uuid.uuid4()), "name": "30 min TV / YouTube",      "cost": 12},
+    {"id": str(uuid.uuid4()), "name": "Full movie",               "cost": 20},
 ]
 
 DEFAULT_PUNISHMENTS = [
