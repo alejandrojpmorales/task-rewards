@@ -123,17 +123,23 @@
 
     .reward-edit-row {
       background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px;
-      display: flex; gap: 8px; align-items: center;
+      display: flex; flex-direction: column; gap: 10px;
     }
+    .reward-edit-main { display: flex; gap: 8px; align-items: center; }
     .reward-edit-row input, .reward-edit-row select {
       background: var(--surface2); border: 1px solid var(--border);
       color: var(--text); border-radius: 8px; padding: 7px 10px; font-size: 0.85rem;
-      outline: none; transition: border-color 0.15s;
+      outline: none; transition: border-color 0.15s; width: 100%;
     }
-    .reward-edit-row input:focus, .reward-edit-row select:focus { border-color: var(--accent); }
-    .reward-edit-row .input-name { flex: 1; }
-    .reward-edit-row .input-cost { width: 60px; text-align: center; }
-    .reward-edit-row .input-mins { width: 56px; text-align: center; }
+    .reward-edit-row input:focus { border-color: var(--accent); }
+    .reward-edit-main .input-name { flex: 1; }
+    .reward-edit-main .input-cost { width: 60px; text-align: center; flex-shrink: 0; }
+    .reward-edit-main .input-mins { width: 56px; text-align: center; flex-shrink: 0; }
+    .notif-section { border-top: 1px solid var(--border); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+    .notif-toggle-row { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--muted); cursor: pointer; }
+    .notif-toggle-row input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+    .notif-fields { display: flex; flex-direction: column; gap: 6px; }
+    .notif-fields label { font-size: 0.72rem; color: var(--muted); margin-bottom: 2px; display: block; }
 
     .edit-actions { display: flex; gap: 8px; margin-top: 10px; }
     .edit-actions .btn { flex: 1; text-align: center; padding: 10px; }
@@ -740,13 +746,37 @@
   function renderRewards() {
     const list = document.getElementById("rewards-list");
     if (editMode) {
-      list.innerHTML = currentRewards.map(r => `
+      list.innerHTML = currentRewards.map(r => {
+        const notifOn = r.notif_enabled !== false;
+        const notifTitle = escHtml(r.notif_title || "");
+        const notifBody  = escHtml(r.notif_body  || "");
+        const mins = r.unlock_minutes || 30;
+        return `
         <div class="reward-edit-row" data-id="${r.id}">
-          <input class="input-name" value="${escHtml(r.name)}" placeholder="Reward name" />
-          <input class="input-cost" type="number" min="0" step="0.5" value="${r.cost}" title="Cost (pts)" />
-          <input class="input-mins" type="number" min="1" step="1" value="${r.unlock_minutes || 30}" title="SF unlock (minutes)" />
-          <button class="btn btn-danger" style="padding:6px 10px" onclick="removeRewardRow(this)">✕</button>
-        </div>`).join("");
+          <div class="reward-edit-main">
+            <input class="input-name" value="${escHtml(r.name)}" placeholder="Reward name" />
+            <input class="input-cost" type="number" min="0" step="0.5" value="${r.cost}" title="Cost (pts)" />
+            <input class="input-mins" type="number" min="1" step="1" value="${mins}" title="SF unlock (minutes)" />
+            <button class="btn btn-danger" style="padding:6px 10px;flex-shrink:0" onclick="removeRewardRow(this)">✕</button>
+          </div>
+          <div class="notif-section">
+            <label class="notif-toggle-row">
+              <input type="checkbox" class="input-notif-enabled" ${notifOn ? "checked" : ""} onchange="toggleNotifFields(this)" />
+              Send notification on redeem
+            </label>
+            <div class="notif-fields" style="${notifOn ? "" : "display:none"}">
+              <div>
+                <label>Notification title <span style="color:var(--muted);font-size:0.68rem">(leave blank for default: 🎁 ${escHtml(r.name)})</span></label>
+                <input class="input-notif-title" value="${notifTitle}" placeholder="🎁 ${escHtml(r.name)}" />
+              </div>
+              <div>
+                <label>Notification body <span style="color:var(--muted);font-size:0.68rem">(leave blank for default: Break started: ${mins} minutes)</span></label>
+                <input class="input-notif-body" value="${notifBody}" placeholder="Break started: ${mins} minutes" />
+              </div>
+            </div>
+          </div>
+        </div>`;
+      }).join("");
       const hdr = document.createElement("div");
       hdr.style.cssText = "display:flex;gap:8px;font-size:0.68rem;color:var(--muted);padding:0 2px;margin-top:4px";
       hdr.innerHTML = `<span style="flex:1">Name</span><span style="width:60px;text-align:center">pts</span><span style="width:56px;text-align:center">🔒 min</span><span style="width:36px"></span>`;
@@ -820,8 +850,12 @@
     updateBreakChip(data.breaks_today, data.max_breaks_per_day);
 
     // MacroDroid notification
-    const mins = data.unlock_minutes || 30;
-    sendNotification(`🎁 ${data.redeemed}`, `Break started: ${mins} minutes`);
+    if (data.notif_enabled !== false) {
+      const mins = data.unlock_minutes || 30;
+      const title = data.notif_title || `🎁 ${data.redeemed}`;
+      const body  = data.notif_body  || `Break started: ${mins} minutes`;
+      sendNotification(title, body);
+    }
 
     if (data.secure_folder && data.secure_folder.unlocked) {
       renderSFCard(data.secure_folder);
@@ -851,11 +885,31 @@
   function toggleEdit()  { editMode = true;  renderRewards(); }
   function cancelEdit()  { editMode = false; renderRewards(); }
 
+  function toggleNotifFields(cb) {
+    cb.closest(".notif-section").querySelector(".notif-fields").style.display = cb.checked ? "" : "none";
+  }
+
   function addRewardRow() {
     const list = document.getElementById("rewards-list");
     const row = document.createElement("div");
     row.className = "reward-edit-row"; row.dataset.id = "";
-    row.innerHTML = `<input class="input-name" placeholder="Reward name" /><input class="input-cost" type="number" min="0" step="0.5" value="1" title="Cost (pts)" /><input class="input-mins" type="number" min="1" step="1" value="30" title="SF unlock (minutes)" /><button class="btn btn-danger" style="padding:6px 10px" onclick="removeRewardRow(this)">✕</button>`;
+    row.innerHTML = `
+      <div class="reward-edit-main">
+        <input class="input-name" placeholder="Reward name" />
+        <input class="input-cost" type="number" min="0" step="0.5" value="1" title="Cost (pts)" />
+        <input class="input-mins" type="number" min="1" step="1" value="30" title="SF unlock (minutes)" />
+        <button class="btn btn-danger" style="padding:6px 10px;flex-shrink:0" onclick="removeRewardRow(this)">✕</button>
+      </div>
+      <div class="notif-section">
+        <label class="notif-toggle-row">
+          <input type="checkbox" class="input-notif-enabled" checked onchange="toggleNotifFields(this)" />
+          Send notification on redeem
+        </label>
+        <div class="notif-fields">
+          <div><label>Notification title <span style="color:var(--muted);font-size:0.68rem">(leave blank for default)</span></label><input class="input-notif-title" placeholder="🎁 Reward name" /></div>
+          <div><label>Notification body <span style="color:var(--muted);font-size:0.68rem">(leave blank for default)</span></label><input class="input-notif-body" placeholder="Break started: 30 minutes" /></div>
+        </div>
+      </div>`;
     list.appendChild(row);
   }
   function removeRewardRow(btn) { btn.closest(".reward-edit-row").remove(); }
@@ -867,6 +921,9 @@
       name: row.querySelector(".input-name").value.trim(),
       cost: parseFloat(row.querySelector(".input-cost").value) || 1,
       unlock_minutes: parseInt(row.querySelector(".input-mins").value) || 30,
+      notif_enabled: row.querySelector(".input-notif-enabled")?.checked ?? true,
+      notif_title:   row.querySelector(".input-notif-title")?.value.trim() || "",
+      notif_body:    row.querySelector(".input-notif-body")?.value.trim()  || "",
     })).filter(r => r.name);
     const res = await fetch("/api/rewards", { method: "PUT", headers: {"Content-Type": "application/json"}, body: JSON.stringify({rewards}) });
     if (!res.ok) { showToast("Failed to save"); return; }

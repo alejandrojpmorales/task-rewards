@@ -738,6 +738,9 @@ def redeem():
         "secure_folder": sf_status,
         "breaks_today": wallet.get("daily_break_count", 0),
         "max_breaks_per_day": wallet.get("max_breaks_per_day", 3),
+        "notif_enabled": reward.get("notif_enabled", True),
+        "notif_title": reward.get("notif_title", ""),
+        "notif_body": reward.get("notif_body", ""),
     })
 
 
