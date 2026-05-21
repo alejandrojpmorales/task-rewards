@@ -193,6 +193,7 @@ def load_wallet() -> dict:
         w.setdefault("daily_break_count", 0)
         w.setdefault("daily_break_date", None)
         w.setdefault("max_breaks_per_day", 3)
+        w.setdefault("custom_focus_names", {})
         return w
     return {"balance": 0.0, "credited_date": "", "credited_today": 0.0,
             "rewards": DEFAULT_REWARDS, "punishments": DEFAULT_PUNISHMENTS,
@@ -202,11 +203,42 @@ def load_wallet() -> dict:
             "streak": 0, "last_active_date": None, "daily_goal": 8.0,
             "balance_cap": None, "active_multiplier": 1.0, "transactions": [],
             "last_break_at": None, "daily_break_count": 0,
-            "daily_break_date": None, "max_breaks_per_day": 3}
+            "daily_break_date": None, "max_breaks_per_day": 3,
+            "custom_focus_names": {}}
 
 
 def save_wallet(wallet: dict):
     kv_set("wallet", wallet)
+
+
+def _slug(name: str) -> str:
+    """Convert a timer display name to a scoring key, e.g. 'My Class' → 'focus_my_class'."""
+    import re
+    return "focus_" + re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
+
+
+def resolve_focus_key(name: str, wallet: dict) -> str:
+    """Return the scoring key for a focus timer name, auto-creating it if unknown."""
+    # Check static map first
+    if name in FOCUS_NAME_MAP:
+        return FOCUS_NAME_MAP[name]
+    # Check custom map
+    custom = wallet.setdefault("custom_focus_names", {})
+    if name in custom:
+        return custom[name]
+    # New timer — register it
+    key = _slug(name)
+    custom[name] = key
+    wallet["scoring"].setdefault(key, 0.2)
+    return key
+
+
+def all_focus_names(wallet: dict) -> dict:
+    """Return {scoring_key: display_name} for every known focus timer."""
+    result = {v: k for k, v in FOCUS_NAME_MAP.items()}
+    for display, key in wallet.get("custom_focus_names", {}).items():
+        result[key] = display
+    return result
 
 
 def credit_points(wallet: dict, today: str, today_total: float):
@@ -547,10 +579,8 @@ def get_score():
         if not fid or fid in counted_focus_ids:
             continue
         name = focus_name(focus)
-        key = FOCUS_NAME_MAP.get(name)
-        if key is None:
-            continue
-        score = scoring.get(key, DEFAULT_SCORING.get(key, 0))
+        key = resolve_focus_key(name, wallet)
+        score = scoring.get(key, wallet["scoring"].get(key, 0.2))
         state["focuses"].append({
             "id": fid, "title": name,
             "score": score, "breakdown": [], "type": "focus",
@@ -627,6 +657,7 @@ def get_config():
         "active_multiplier": wallet.get("active_multiplier", 1.0),
         "max_breaks_per_day": wallet.get("max_breaks_per_day", 3),
         "daily_break_count": wallet.get("daily_break_count", 0),
+        "focus_names": all_focus_names(wallet),
     })
 
 
@@ -636,13 +667,19 @@ def update_config():
         return jsonify({"error": "not_authenticated"}), 401
     data = request.get_json() or {}
     incoming = data.get("scoring", {})
+    wallet = load_wallet()
+    # Build clean scoring: start with all DEFAULT_SCORING keys, then add any
+    # custom focus keys already known in the wallet
     clean = {}
-    for key, default in DEFAULT_SCORING.items():
+    all_keys = dict(DEFAULT_SCORING)
+    for key in wallet.get("scoring", {}):
+        if key.startswith("focus_") and key not in all_keys:
+            all_keys[key] = 0.2  # default for unknown custom timers
+    for key, default in all_keys.items():
         try:
             clean[key] = round(max(0.0, float(incoming.get(key, default))), 2)
         except (ValueError, TypeError):
             clean[key] = default
-    wallet = load_wallet()
     wallet["scoring"] = clean
     try:
         wallet["daily_goal"] = max(0.0, float(data.get("daily_goal", wallet.get("daily_goal", 8.0))))

@@ -500,19 +500,8 @@
 
   <div class="section-title" style="margin-bottom:16px">Focus timer scores</div>
   <div class="card" style="margin-bottom:24px">
-    <div class="card-label" style="text-align:left;margin-bottom:12px">Points per completed focus session</div>
-    <div style="display:flex;flex-direction:column;gap:12px">
-      <div class="cfg-row"><span class="cfg-label">💼 Work</span><input id="cfg-focus-work" type="number" min="0" step="0.1" class="cfg-input" /></div>
-      <div class="cfg-row"><span class="cfg-label">📚 Homework</span><input id="cfg-focus-homework" type="number" min="0" step="0.1" class="cfg-input" /></div>
-      <div class="cfg-row"><span class="cfg-label">🎓 Thesis</span><input id="cfg-focus-thesis" type="number" min="0" step="0.1" class="cfg-input" /></div>
-      <div class="cfg-row"><span class="cfg-label">🗓️ LONG meeting</span><input id="cfg-focus-long" type="number" min="0" step="0.1" class="cfg-input" /></div>
-      <div class="cfg-row"><span class="cfg-label">🗓️ SHORT meeting</span><input id="cfg-focus-short" type="number" min="0" step="0.1" class="cfg-input" /></div>
-      <div class="cfg-row"><span class="cfg-label">🖥️ Digital Housekeeping</span><input id="cfg-focus-digital" type="number" min="0" step="0.1" class="cfg-input" /></div>
-      <div class="cfg-row"><span class="cfg-label">🧹 Cleaning and ordering</span><input id="cfg-focus-cleaning" type="number" min="0" step="0.1" class="cfg-input" /></div>
-      <div class="cfg-row"><span class="cfg-label">🌅 Morning routine</span><input id="cfg-focus-morning" type="number" min="0" step="0.1" class="cfg-input" /></div>
-      <div class="cfg-row"><span class="cfg-label">🍳 Cooking</span><input id="cfg-focus-cooking" type="number" min="0" step="0.1" class="cfg-input" /></div>
-      <div class="cfg-row"><span class="cfg-label">🎓 Class</span><input id="cfg-focus-class" type="number" min="0" step="0.1" class="cfg-input" /></div>
-    </div>
+    <div class="card-label" style="text-align:left;margin-bottom:12px">Points per completed focus session — new timers appear here automatically at 0.2 pts</div>
+    <div id="focus-scores-list" style="display:flex;flex-direction:column;gap:12px"></div>
     <button class="btn btn-primary" onclick="saveConfig()" style="width:100%;margin-top:16px;padding:11px;text-align:center">Save</button>
   </div>
 
@@ -1034,6 +1023,41 @@
   }
 
   // ── Settings ───────────────────────────────────────────────────────────────
+  const FOCUS_ICONS = {
+    focus_work: "💼", focus_homework: "📚", focus_thesis: "🎓",
+    focus_long_meeting: "🗓️", focus_short_meeting: "🗓️",
+    focus_digital_housekeeping: "🖥️", focus_cleaning: "🧹",
+    focus_morning_routine: "🌅", focus_cooking: "🍳", focus_class: "🎓",
+  };
+
+  function renderFocusScores(focusNames, scoring) {
+    const container = document.getElementById("focus-scores-list");
+    // Sort: known static ones first, then custom (alphabetical)
+    const staticKeys = Object.values(FOCUS_ICONS);
+    const entries = Object.entries(focusNames).sort(([a], [b]) => {
+      const ai = staticKeys.indexOf(a), bi = staticKeys.indexOf(b);
+      if (ai !== -1 && bi !== -1) return ai - bi;
+      if (ai !== -1) return -1; if (bi !== -1) return 1;
+      return (focusNames[a] || a).localeCompare(focusNames[b] || b);
+    });
+    container.innerHTML = entries.map(([key, label]) => {
+      const icon = FOCUS_ICONS[key] || "⏱️";
+      const val = scoring[key] ?? 0.2;
+      return `<div class="cfg-row">
+        <span class="cfg-label">${icon} ${label}</span>
+        <input data-focus-key="${key}" type="number" min="0" step="0.1" class="cfg-input" value="${val}" />
+      </div>`;
+    }).join("");
+  }
+
+  function collectFocusScores() {
+    const result = {};
+    document.querySelectorAll("#focus-scores-list [data-focus-key]").forEach(el => {
+      result[el.dataset.focusKey] = parseFloat(el.value) || 0;
+    });
+    return result;
+  }
+
   async function loadConfig() {
     const res = await fetch("/api/config"); if (!res.ok) return;
     const data = await res.json(); const s = data.scoring;
@@ -1045,16 +1069,7 @@
     document.getElementById("cfg-pomo6").value         = s.tag_pomo6     ?? 1.2;
     document.getElementById("cfg-pomo8").value         = s.tag_pomo8     ?? 1.6;
     document.getElementById("cfg-habit").value         = s.habit         ?? 1.0;
-    document.getElementById("cfg-focus-work").value    = s.focus_work    ?? 1.0;
-    document.getElementById("cfg-focus-homework").value= s.focus_homework?? 1.2;
-    document.getElementById("cfg-focus-thesis").value  = s.focus_thesis  ?? 2.0;
-    document.getElementById("cfg-focus-long").value    = s.focus_long_meeting ?? 0.5;
-    document.getElementById("cfg-focus-short").value   = s.focus_short_meeting?? 0.3;
-    document.getElementById("cfg-focus-digital").value = s.focus_digital_housekeeping ?? 0.5;
-    document.getElementById("cfg-focus-cleaning").value= s.focus_cleaning ?? 0.5;
-    document.getElementById("cfg-focus-morning").value = s.focus_morning_routine ?? 0.3;
-    document.getElementById("cfg-focus-cooking").value = s.focus_cooking ?? 0.3;
-    document.getElementById("cfg-focus-class").value   = s.focus_class ?? 0.2;
+    renderFocusScores(data.focus_names || {}, s);
     document.getElementById("cfg-goal").value          = data.daily_goal        ?? 8;
     document.getElementById("cfg-cap").value           = data.balance_cap       ?? 0;
     document.getElementById("cfg-multiplier").value    = data.active_multiplier ?? 1;
@@ -1072,16 +1087,7 @@
       tag_pomo6:                   parseFloat(document.getElementById("cfg-pomo6").value)          || 0,
       tag_pomo8:                   parseFloat(document.getElementById("cfg-pomo8").value)          || 0,
       habit:                       parseFloat(document.getElementById("cfg-habit").value)          || 0,
-      focus_work:                  parseFloat(document.getElementById("cfg-focus-work").value)     || 0,
-      focus_homework:              parseFloat(document.getElementById("cfg-focus-homework").value) || 0,
-      focus_thesis:                parseFloat(document.getElementById("cfg-focus-thesis").value)   || 0,
-      focus_long_meeting:          parseFloat(document.getElementById("cfg-focus-long").value)     || 0,
-      focus_short_meeting:         parseFloat(document.getElementById("cfg-focus-short").value)    || 0,
-      focus_digital_housekeeping:  parseFloat(document.getElementById("cfg-focus-digital").value)  || 0,
-      focus_cleaning:              parseFloat(document.getElementById("cfg-focus-cleaning").value) || 0,
-      focus_morning_routine:       parseFloat(document.getElementById("cfg-focus-morning").value)  || 0,
-      focus_cooking:               parseFloat(document.getElementById("cfg-focus-cooking").value)  || 0,
-      focus_class:                 parseFloat(document.getElementById("cfg-focus-class").value)    || 0,
+      ...collectFocusScores(),
     };
     const payload = {
       scoring,
