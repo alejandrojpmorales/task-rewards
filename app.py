@@ -6,11 +6,24 @@ import random
 import string
 from datetime import date, datetime, timezone, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 from flask import Flask, redirect, request, session, jsonify, render_template
 import requests
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# ---------------------------------------------------------------------------
+# Game-day helper — resets at 03:00 CET so late nights count as the same day
+# ---------------------------------------------------------------------------
+_CET = ZoneInfo("Europe/Amsterdam")
+
+def game_today() -> str:
+    """Return the current game-date string (YYYY-MM-DD).
+    Before 03:00 CET the day hasn't turned over yet."""
+    now = datetime.now(_CET)
+    d = now.date() if now.hour >= 3 else now.date() - timedelta(days=1)
+    return d.isoformat()
 
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, template_folder=os.path.join(_ROOT, "templates"))
@@ -373,9 +386,9 @@ def get_basic_auth():
 
 
 def fetch_completed_tasks(headers):
-    today = date.today()
-    start = f"{today.isoformat()}T00:00:00.000+0000"
-    end   = f"{today.isoformat()}T23:59:59.000+0000"
+    today = game_today()
+    start = f"{today}T00:00:00.000+0000"
+    end   = f"{today}T23:59:59.000+0000"
     resp = requests.post(
         f"{BASE_URL}/task/completed",
         headers=headers,
@@ -397,13 +410,13 @@ def fetch_habits(headers):
 
 def fetch_pomodoros(headers):
     """GET /open/v1/focus — fetch completed pomodoros for today (type=0)."""
-    today = date.today()
+    today = game_today()
     resp = requests.get(
         f"{BASE_URL}/focus",
         headers=headers,
         params={
-            "from": f"{today.isoformat()}T00:00:00+0000",
-            "to":   f"{today.isoformat()}T23:59:59+0000",
+            "from": f"{today}T00:00:00+0000",
+            "to":   f"{today}T23:59:59+0000",
             "type": 0,
         },
     )
@@ -461,7 +474,7 @@ def fetch_pending_tasks(headers, scoring=None):
     if not isinstance(projects, list):
         return [], None
 
-    today_str = date.today().isoformat()
+    today_str = game_today()
     results = []
     for project in projects:
         pid = project.get("id")
@@ -575,7 +588,7 @@ def get_score():
     if "access_token" not in session:
         return jsonify({"error": "not_authenticated"}), 401
 
-    today = date.today().isoformat()
+    today = game_today()
     state = load_state(today)
     wallet = load_wallet()
     inactivity_punished = check_inactivity_punishment(wallet, state)
@@ -1009,7 +1022,7 @@ def set_mood():
     if mood not in MOOD_ORDER:
         return jsonify({"error": "invalid mood"}), 400
     wallet = load_wallet()
-    today = date.today().isoformat()
+    today = game_today()
     wallet["today_mood"] = mood
     wallet["mood_date"] = today
     multiplier = wallet["mood_multipliers"].get(mood, DEFAULT_MOOD_MULTIPLIERS[mood])
@@ -1022,7 +1035,7 @@ def set_mood():
 def get_history():
     if "access_token" not in session:
         return jsonify({"error": "not_authenticated"}), 401
-    today = date.today()
+    today = date.fromisoformat(game_today())
     days = []
     for i in range(14):
         d = (today - timedelta(days=i)).isoformat()
