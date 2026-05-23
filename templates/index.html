@@ -1336,10 +1336,12 @@
   }
 
   async function testNotification() {
+    // Never call requestPermission() — Samsung Browser auto-blocks it.
+    // Permission must be granted manually in browser site settings.
     if (Notification.permission !== "granted") {
-      const p = await Notification.requestPermission();
+      showToast("Enable notifications manually: browser menu → Settings → Sites → Notifications → Allow this site");
       updateNotifDiag();
-      if (p !== "granted") { showToast("Permission denied — enable in Settings → Apps → Samsung Internet → Notifications"); return; }
+      return;
     }
     await sendNotification("🔔 Test notification", "Notifications are working!");
     showToast("Test sent — check your notification shade");
