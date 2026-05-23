@@ -1319,9 +1319,9 @@
         console.log("[SW] registered:", swReg.scope);
       } catch(e) { console.warn("[SW] registration failed:", e); }
     }
-    if (Notification.permission === "default") {
-      await Notification.requestPermission();
-    }
+    // Do NOT call requestPermission() here — calling it automatically on page
+    // load causes Samsung Browser to mark it as "temporarily blocked".
+    // Permission is requested only when the user taps the test button.
     updateNotifDiag();
   }
 
