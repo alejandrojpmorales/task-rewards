@@ -1312,50 +1312,34 @@
   let swReg = null;
 
   async function initNotifications() {
-    // Only register the SW — do NOT auto-request permission here.
-    // Mobile browsers block requestPermission() outside a user gesture.
+    if (!("Notification" in window)) return;
     if ("serviceWorker" in navigator) {
       try {
         swReg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-        // Wait for the SW to fully activate before we try to use it
-        await navigator.serviceWorker.ready;
-        console.log("[SW] active:", swReg.scope);
+        console.log("[SW] registered:", swReg.scope);
       } catch(e) { console.warn("[SW] registration failed:", e); }
+    }
+    if (Notification.permission === "default") {
+      await Notification.requestPermission();
     }
     updateNotifDiag();
   }
 
   async function sendNotification(title, body) {
-    if (!("Notification" in window)) { console.warn("[Notif] API not supported"); return; }
-    if (Notification.permission !== "granted") { console.warn("[Notif] permission:", Notification.permission); return; }
-    try {
-      // Always use serviceWorker.ready — most reliable on Android PWA
-      if ("serviceWorker" in navigator) {
-        const reg = await navigator.serviceWorker.ready;
-        await reg.showNotification(title, { body });
-      } else {
-        new Notification(title, { body });
-      }
-    } catch(e) {
-      console.error("[Notif] failed:", e);
-      showToast("Notification error: " + e.message);
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    const reg = swReg || (await navigator.serviceWorker.ready.catch(() => null));
+    if (reg) {
+      reg.showNotification(title, { body, icon: "/favicon.ico", badge: "/favicon.ico" });
+    } else {
+      new Notification(title, { body });
     }
   }
 
   async function testNotification() {
-    if (!("Notification" in window)) {
-      showToast("❌ Notifications not supported in this browser"); return;
-    }
     if (Notification.permission !== "granted") {
-      // This MUST be called from a user gesture (button tap) — which it is here
-      let p;
-      try { p = await Notification.requestPermission(); }
-      catch(e) { showToast("❌ Permission request failed: " + e.message); return; }
+      const p = await Notification.requestPermission();
       updateNotifDiag();
-      if (p !== "granted") {
-        showToast("❌ Permission denied — go to Settings → Apps → Samsung Internet → Notifications");
-        return;
-      }
+      if (p !== "granted") { showToast("Permission denied — enable in Settings → Apps → Samsung Internet → Notifications"); return; }
     }
     await sendNotification("🔔 Test notification", "Notifications are working!");
     showToast("Test sent — check your notification shade");
@@ -1364,11 +1348,9 @@
   function updateNotifDiag() {
     const el = document.getElementById("notif-diag");
     if (!el) return;
-    const supported = "Notification" in window;
-    const perm = supported ? Notification.permission : "unsupported";
-    const swSupported = "serviceWorker" in navigator;
-    const swState = !swSupported ? "unsupported"
-      : swReg ? (swReg.active ? "active ✓" : "registered (not yet active)")
+    const perm = "Notification" in window ? Notification.permission : "unsupported";
+    const swState = !("serviceWorker" in navigator) ? "unsupported"
+      : swReg ? (swReg.active ? "active ✓" : "registered (activating…)")
       : "not registered";
     const permColor = perm === "granted" ? "var(--accent)" : perm === "denied" ? "#f87171" : "var(--gold)";
     el.innerHTML =
