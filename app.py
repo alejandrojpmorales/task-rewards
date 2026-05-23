@@ -84,6 +84,16 @@ DEFAULT_PUNISHMENTS = [
     {"id": str(uuid.uuid4()), "name": "Opened a blocked app",    "cost": 10},
 ]
 
+DEFAULT_MOOD_MULTIPLIERS = {
+    "awesome":  1.0,
+    "good":     1.1,
+    "fine":     1.25,
+    "bad":      1.35,
+    "terrible": 1.5,
+}
+
+MOOD_ORDER = ["awesome", "good", "fine", "bad", "terrible"]
+
 
 # ---------------------------------------------------------------------------
 # Storage abstraction — Upstash Redis in production, JSON files locally
@@ -194,6 +204,11 @@ def load_wallet() -> dict:
         w.setdefault("daily_break_date", None)
         w.setdefault("max_breaks_per_day", 3)
         w.setdefault("custom_focus_names", {})
+        w.setdefault("today_mood", None)
+        w.setdefault("mood_date", None)
+        w.setdefault("mood_multipliers", DEFAULT_MOOD_MULTIPLIERS.copy())
+        for mood in MOOD_ORDER:
+            w["mood_multipliers"].setdefault(mood, DEFAULT_MOOD_MULTIPLIERS[mood])
         return w
     return {"balance": 0.0, "credited_date": "", "credited_today": 0.0,
             "rewards": DEFAULT_REWARDS, "punishments": DEFAULT_PUNISHMENTS,
@@ -204,7 +219,8 @@ def load_wallet() -> dict:
             "balance_cap": None, "active_multiplier": 1.0, "transactions": [],
             "last_break_at": None, "daily_break_count": 0,
             "daily_break_date": None, "max_breaks_per_day": 3,
-            "custom_focus_names": {}}
+            "custom_focus_names": {}, "today_mood": None, "mood_date": None,
+            "mood_multipliers": DEFAULT_MOOD_MULTIPLIERS.copy()}
 
 
 def save_wallet(wallet: dict):
@@ -627,6 +643,14 @@ def get_score():
 
     save_state(state)
 
+    # Reset mood if it's a new day
+    if wallet.get("mood_date") != today:
+        wallet["today_mood"] = None
+        wallet["mood_date"] = today
+        # Reset multiplier to 1.0 when no mood is set yet
+        if wallet.get("active_multiplier", 1.0) != 1.0:
+            wallet["active_multiplier"] = 1.0
+
     all_items = state["tasks"] + state["habits"] + state["focuses"]
     multiplier = wallet.get("active_multiplier", 1.0)
     raw_total = round(sum(i["score"] for i in all_items), 1)
@@ -662,6 +686,8 @@ def get_score():
         "streak_bonus": streak_bonus,
         "daily_goal": wallet.get("daily_goal", 8.0),
         "active_multiplier": multiplier,
+        "today_mood": wallet.get("today_mood"),
+        "mood_multipliers": wallet.get("mood_multipliers", DEFAULT_MOOD_MULTIPLIERS),
         "hours_since_activity": hours_since,
         "inactivity_punished": inactivity_punished,
         "errors": errors,
@@ -709,6 +735,7 @@ def get_config():
         "max_breaks_per_day": wallet.get("max_breaks_per_day", 3),
         "daily_break_count": wallet.get("daily_break_count", 0),
         "focus_names": all_focus_names(wallet),
+        "mood_multipliers": wallet.get("mood_multipliers", DEFAULT_MOOD_MULTIPLIERS),
     })
 
 
@@ -749,6 +776,13 @@ def update_config():
         wallet["max_breaks_per_day"] = max(1, int(data.get("max_breaks_per_day", wallet.get("max_breaks_per_day", 3))))
     except (ValueError, TypeError):
         pass
+    incoming_mood = data.get("mood_multipliers", {})
+    mood_mults = wallet.setdefault("mood_multipliers", DEFAULT_MOOD_MULTIPLIERS.copy())
+    for mood, default in DEFAULT_MOOD_MULTIPLIERS.items():
+        try:
+            mood_mults[mood] = round(max(1.0, float(incoming_mood.get(mood, default))), 2)
+        except (ValueError, TypeError):
+            pass
     save_wallet(wallet)
     return jsonify({
         "scoring": clean,
@@ -756,6 +790,7 @@ def update_config():
         "balance_cap": wallet["balance_cap"],
         "active_multiplier": wallet["active_multiplier"],
         "max_breaks_per_day": wallet["max_breaks_per_day"],
+        "mood_multipliers": wallet["mood_multipliers"],
     })
 
 
@@ -964,6 +999,24 @@ def lock_sf():
 # ---------------------------------------------------------------------------
 # History & transactions
 # ---------------------------------------------------------------------------
+
+@app.route("/api/mood", methods=["POST"])
+def set_mood():
+    if "access_token" not in session:
+        return jsonify({"error": "not_authenticated"}), 401
+    data = request.get_json() or {}
+    mood = data.get("mood")
+    if mood not in MOOD_ORDER:
+        return jsonify({"error": "invalid mood"}), 400
+    wallet = load_wallet()
+    today = date.today().isoformat()
+    wallet["today_mood"] = mood
+    wallet["mood_date"] = today
+    multiplier = wallet["mood_multipliers"].get(mood, DEFAULT_MOOD_MULTIPLIERS[mood])
+    wallet["active_multiplier"] = multiplier
+    save_wallet(wallet)
+    return jsonify({"mood": mood, "active_multiplier": multiplier})
+
 
 @app.route("/api/history")
 def get_history():

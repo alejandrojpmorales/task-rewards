@@ -251,6 +251,21 @@
     .urge-cancel { font-size: 0.82rem; color: var(--muted); text-decoration: underline; cursor: pointer; margin-top: 8px; }
     .break-counter-chip { font-size: 0.72rem; background: rgba(251,146,60,0.12); border: 1px solid rgba(251,146,60,0.3); color: var(--orange); border-radius: 20px; padding: 3px 10px; }
 
+    /* Mood card */
+    .mood-card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 16px; margin-bottom: 12px; }
+    .mood-card-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 12px; text-align: center; }
+    .mood-row { display: flex; justify-content: space-between; gap: 6px; }
+    .mood-btn {
+      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 12px;
+      padding: 10px 4px; cursor: pointer; transition: border-color 0.15s, background 0.15s;
+      font-size: 0.65rem; color: var(--muted);
+    }
+    .mood-btn .mood-emoji { font-size: 1.5rem; line-height: 1; }
+    .mood-btn:hover { border-color: var(--accent); color: var(--text); }
+    .mood-btn.selected { border-color: var(--accent); background: rgba(124,106,247,0.12); color: var(--text); }
+    .mood-btn.selected .mood-emoji { filter: drop-shadow(0 0 6px rgba(124,106,247,0.6)); }
+
     /* History tab */
     .history-day {
       background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
@@ -370,6 +385,18 @@
     <div class="card-label">Balance</div>
     <div class="card-value balance" id="balance">—</div>
     <div class="card-sub" id="balance-cap-label">points</div>
+  </div>
+</div>
+
+<!-- Mood card -->
+<div class="mood-card">
+  <div class="mood-card-label">How are you feeling today?</div>
+  <div class="mood-row">
+    <button class="mood-btn" data-mood="awesome" onclick="selectMood('awesome')"><span class="mood-emoji">🤩</span>Awesome</button>
+    <button class="mood-btn" data-mood="good"    onclick="selectMood('good')"   ><span class="mood-emoji">😊</span>Good</button>
+    <button class="mood-btn" data-mood="fine"    onclick="selectMood('fine')"   ><span class="mood-emoji">😐</span>Fine</button>
+    <button class="mood-btn" data-mood="bad"     onclick="selectMood('bad')"    ><span class="mood-emoji">😔</span>Bad</button>
+    <button class="mood-btn" data-mood="terrible" onclick="selectMood('terrible')"><span class="mood-emoji">😩</span>Terrible</button>
   </div>
 </div>
 
@@ -515,6 +542,19 @@
     <button class="btn btn-primary" onclick="testNotification()" style="width:100%;padding:11px;text-align:center">🔔 Send test notification</button>
   </div>
 
+  <div class="section-title" style="margin-bottom:16px">Mood multipliers</div>
+  <div class="card" style="margin-bottom:24px">
+    <div class="card-label" style="text-align:left;margin-bottom:12px">Points earned are multiplied by your daily mood. Worse day = more points.</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="cfg-row"><span class="cfg-label">🤩 Awesome</span><input id="cfg-mood-awesome"  type="number" min="1" step="0.05" class="cfg-input" /></div>
+      <div class="cfg-row"><span class="cfg-label">😊 Good</span>   <input id="cfg-mood-good"     type="number" min="1" step="0.05" class="cfg-input" /></div>
+      <div class="cfg-row"><span class="cfg-label">😐 Fine</span>   <input id="cfg-mood-fine"     type="number" min="1" step="0.05" class="cfg-input" /></div>
+      <div class="cfg-row"><span class="cfg-label">😔 Bad</span>    <input id="cfg-mood-bad"      type="number" min="1" step="0.05" class="cfg-input" /></div>
+      <div class="cfg-row"><span class="cfg-label">😩 Terrible</span><input id="cfg-mood-terrible" type="number" min="1" step="0.05" class="cfg-input" /></div>
+    </div>
+    <button class="btn btn-primary" onclick="saveConfig()" style="width:100%;margin-top:16px;padding:11px;text-align:center">Save</button>
+  </div>
+
   <div class="section-title" style="margin-bottom:16px">Goals & limits</div>
   <div class="card" style="margin-bottom:24px">
     <div style="display:flex;flex-direction:column;gap:14px">
@@ -606,11 +646,19 @@
         streak === 0 ? "🔥 No streak yet" : `🔥 ${streak} day streak`;
       if (data.streak_bonus) showToast(`🔥 ${streak}-day streak! +${data.streak_bonus} bonus pts!`);
 
-      // Multiplier chip
+      // Mood + multiplier chip
       const mul = data.active_multiplier || 1;
       const mulChip = document.getElementById("multiplier-chip");
-      if (mul > 1) { mulChip.textContent = `⚡ ${mul}× multiplier`; mulChip.style.display = ""; }
-      else mulChip.style.display = "none";
+      renderMood(data.today_mood);
+      if (data.today_mood) {
+        mulChip.textContent = `${MOOD_LABELS[data.today_mood]} · ${mul}×`;
+        mulChip.style.display = "";
+      } else if (mul > 1) {
+        mulChip.textContent = `⚡ ${mul}× multiplier`;
+        mulChip.style.display = "";
+      } else {
+        mulChip.style.display = "none";
+      }
 
       // Daily goal bar
       const pct = Math.min(100, (data.today_total / currentDailyGoal) * 100);
@@ -866,6 +914,35 @@
     });
   }
 
+  // ── Mood ───────────────────────────────────────────────────────────────────
+  const MOOD_LABELS = { awesome:"Awesome", good:"Good", fine:"Fine", bad:"Bad", terrible:"Terrible" };
+
+  function renderMood(todayMood) {
+    document.querySelectorAll(".mood-btn").forEach(btn => {
+      btn.classList.toggle("selected", btn.dataset.mood === todayMood);
+    });
+  }
+
+  async function selectMood(mood) {
+    const res = await fetch("/api/mood", {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({mood}),
+    });
+    if (!res.ok) { showToast("Error setting mood"); return; }
+    const data = await res.json();
+    renderMood(mood);
+    const mul = data.active_multiplier;
+    const mulChip = document.getElementById("multiplier-chip");
+    if (mul > 1) {
+      mulChip.textContent = `${MOOD_LABELS[mood]} · ${mul}×`;
+      mulChip.style.display = "";
+    } else {
+      mulChip.textContent = `${MOOD_LABELS[mood]} · ${mul}×`;
+      mulChip.style.display = "";
+    }
+    showToast(`Mood set to ${MOOD_LABELS[mood]} · ${mul}× multiplier`);
+  }
+
   function updateBreakChip(breaksToday, maxBreaks) {
     const chip = document.getElementById("break-counter-chip");
     if (maxBreaks == null) { chip.style.display = "none"; return; }
@@ -1076,6 +1153,12 @@
     document.getElementById("cfg-multiplier").value    = data.active_multiplier ?? 1;
     document.getElementById("cfg-max-breaks").value    = data.max_breaks_per_day ?? 3;
     updateBreakChip(data.daily_break_count, data.max_breaks_per_day);
+    const mm = data.mood_multipliers || {};
+    document.getElementById("cfg-mood-awesome").value  = mm.awesome  ?? 1.0;
+    document.getElementById("cfg-mood-good").value     = mm.good     ?? 1.1;
+    document.getElementById("cfg-mood-fine").value     = mm.fine     ?? 1.25;
+    document.getElementById("cfg-mood-bad").value      = mm.bad      ?? 1.35;
+    document.getElementById("cfg-mood-terrible").value = mm.terrible ?? 1.5;
   }
 
   async function saveConfig() {
@@ -1096,6 +1179,13 @@
       balance_cap:        parseFloat(document.getElementById("cfg-cap").value)        || 0,
       active_multiplier:  parseFloat(document.getElementById("cfg-multiplier").value) || 1,
       max_breaks_per_day: parseInt(document.getElementById("cfg-max-breaks").value)   || 3,
+      mood_multipliers: {
+        awesome:  parseFloat(document.getElementById("cfg-mood-awesome").value)  || 1.0,
+        good:     parseFloat(document.getElementById("cfg-mood-good").value)     || 1.1,
+        fine:     parseFloat(document.getElementById("cfg-mood-fine").value)     || 1.25,
+        bad:      parseFloat(document.getElementById("cfg-mood-bad").value)      || 1.35,
+        terrible: parseFloat(document.getElementById("cfg-mood-terrible").value) || 1.5,
+      },
     };
     const res = await fetch("/api/config", { method: "PUT", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload) });
     if (res.ok) showToast("Settings saved!"); else showToast("Failed to save");
