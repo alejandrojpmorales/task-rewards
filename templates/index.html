@@ -1312,48 +1312,68 @@
   let swReg = null;
 
   async function initNotifications() {
-    if (!("Notification" in window)) return;
-    // Register service worker (required for Android PWA notifications)
+    // Only register the SW — do NOT auto-request permission here.
+    // Mobile browsers block requestPermission() outside a user gesture.
     if ("serviceWorker" in navigator) {
       try {
         swReg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-        console.log("[SW] registered:", swReg.scope);
+        // Wait for the SW to fully activate before we try to use it
+        await navigator.serviceWorker.ready;
+        console.log("[SW] active:", swReg.scope);
       } catch(e) { console.warn("[SW] registration failed:", e); }
-    }
-    if (Notification.permission === "default") {
-      await Notification.requestPermission();
     }
     updateNotifDiag();
   }
 
   async function sendNotification(title, body) {
-    if (!("Notification" in window) || Notification.permission !== "granted") return;
-    const reg = swReg || (await navigator.serviceWorker.ready.catch(() => null));
-    if (reg) {
-      reg.showNotification(title, { body, icon: "/favicon.ico", badge: "/favicon.ico" });
-    } else {
-      // Fallback for desktop browsers without SW
-      new Notification(title, { body, icon: "/favicon.ico" });
+    if (!("Notification" in window)) { console.warn("[Notif] API not supported"); return; }
+    if (Notification.permission !== "granted") { console.warn("[Notif] permission:", Notification.permission); return; }
+    try {
+      // Always use serviceWorker.ready — most reliable on Android PWA
+      if ("serviceWorker" in navigator) {
+        const reg = await navigator.serviceWorker.ready;
+        await reg.showNotification(title, { body });
+      } else {
+        new Notification(title, { body });
+      }
+    } catch(e) {
+      console.error("[Notif] failed:", e);
+      showToast("Notification error: " + e.message);
     }
   }
 
   async function testNotification() {
+    if (!("Notification" in window)) {
+      showToast("❌ Notifications not supported in this browser"); return;
+    }
     if (Notification.permission !== "granted") {
-      const p = await Notification.requestPermission();
+      // This MUST be called from a user gesture (button tap) — which it is here
+      let p;
+      try { p = await Notification.requestPermission(); }
+      catch(e) { showToast("❌ Permission request failed: " + e.message); return; }
       updateNotifDiag();
-      if (p !== "granted") { showToast("Permission denied — enable notifications in browser settings"); return; }
+      if (p !== "granted") {
+        showToast("❌ Permission denied — go to Settings → Apps → Samsung Internet → Notifications");
+        return;
+      }
     }
     await sendNotification("🔔 Test notification", "Notifications are working!");
-    showToast("Test notification sent!");
+    showToast("Test sent — check your notification shade");
   }
 
   function updateNotifDiag() {
     const el = document.getElementById("notif-diag");
     if (!el) return;
-    const perm = "Notification" in window ? Notification.permission : "unsupported";
-    const sw   = "serviceWorker" in navigator ? "supported" : "unsupported";
-    const reg  = swReg ? "registered ✓" : "not registered";
-    el.innerHTML = `Permission: <strong style="color:${perm==='granted'?'var(--accent)':perm==='denied'?'#f87171':'var(--gold)'}">${perm}</strong> &nbsp;|&nbsp; Service Worker: ${sw} / ${reg}`;
+    const supported = "Notification" in window;
+    const perm = supported ? Notification.permission : "unsupported";
+    const swSupported = "serviceWorker" in navigator;
+    const swState = !swSupported ? "unsupported"
+      : swReg ? (swReg.active ? "active ✓" : "registered (not yet active)")
+      : "not registered";
+    const permColor = perm === "granted" ? "var(--accent)" : perm === "denied" ? "#f87171" : "var(--gold)";
+    el.innerHTML =
+      `Permission: <strong style="color:${permColor}">${perm}</strong><br>` +
+      `Service Worker: <strong>${swState}</strong>`;
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
