@@ -222,6 +222,7 @@ def load_wallet() -> dict:
         w.setdefault("mood_multipliers", DEFAULT_MOOD_MULTIPLIERS.copy())
         for mood in MOOD_ORDER:
             w["mood_multipliers"].setdefault(mood, DEFAULT_MOOD_MULTIPLIERS[mood])
+        w.setdefault("streak_daily_bonus_date", None)
         return w
     return {"balance": 0.0, "credited_date": "", "credited_today": 0.0,
             "rewards": DEFAULT_REWARDS, "punishments": DEFAULT_PUNISHMENTS,
@@ -233,7 +234,8 @@ def load_wallet() -> dict:
             "last_break_at": None, "daily_break_count": 0,
             "daily_break_date": None, "max_breaks_per_day": 3,
             "custom_focus_names": {}, "today_mood": None, "mood_date": None,
-            "mood_multipliers": DEFAULT_MOOD_MULTIPLIERS.copy()}
+            "mood_multipliers": DEFAULT_MOOD_MULTIPLIERS.copy(),
+            "streak_daily_bonus_date": None}
 
 
 def save_wallet(wallet: dict):
@@ -671,10 +673,21 @@ def get_score():
 
     credit_points(wallet, today, today_total)
 
-    streak_bonus = update_streak(wallet, today, today_total > 0)
+    # Activity = any completed task, habit, or focus (not just scored points)
+    had_activity = bool(state["tasks"] or state["habits"] or state["focuses"])
+    streak_bonus = update_streak(wallet, today, had_activity)
 
-    if today_total > 0:
+    if had_activity:
         wallet["last_activity_at"] = datetime.now(timezone.utc).isoformat()
+
+    # Streak daily bonus: 1 pt × streak length per day when streak >= 7
+    streak_daily_bonus = 0
+    streak_val = wallet.get("streak", 0)
+    if streak_val >= 7 and wallet.get("streak_daily_bonus_date") != today:
+        streak_daily_bonus = streak_val
+        wallet["balance"] = round(wallet.get("balance", 0) + streak_daily_bonus, 1)
+        wallet["streak_daily_bonus_date"] = today
+        add_transaction(wallet, "streak_bonus", f"Daily streak bonus ({streak_val}-day streak) 🔥", streak_daily_bonus)
 
     cap = wallet.get("balance_cap")
     if cap and wallet["balance"] > cap:
@@ -697,6 +710,7 @@ def get_score():
         "balance": wallet["balance"],
         "streak": wallet.get("streak", 0),
         "streak_bonus": streak_bonus,
+        "streak_daily_bonus": streak_daily_bonus,
         "daily_goal": wallet.get("daily_goal", 8.0),
         "active_multiplier": multiplier,
         "today_mood": wallet.get("today_mood"),

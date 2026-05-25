@@ -645,6 +645,7 @@
       document.getElementById("streak-chip").textContent =
         streak === 0 ? "🔥 No streak yet" : `🔥 ${streak} day streak`;
       if (data.streak_bonus) showToast(`🔥 ${streak}-day streak! +${data.streak_bonus} bonus pts!`);
+      if (data.streak_daily_bonus) showToast(`🔥 Daily streak bonus: +${data.streak_daily_bonus} pts (${streak}-day streak)`);
 
       // Mood + multiplier chip
       const mul = data.active_multiplier || 1;
