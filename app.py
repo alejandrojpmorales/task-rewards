@@ -1069,6 +1069,7 @@ def get_history():
     return jsonify({
         "days": days,
         "streak": wallet.get("streak", 0),
+        "daily_goal": wallet.get("daily_goal", 8.0),
         "transactions": list(reversed(wallet.get("transactions", [])[:30])),
     })
 

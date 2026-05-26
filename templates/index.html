@@ -215,6 +215,30 @@
     .banner.success .msg { color: var(--green); }
     .banner .msg strong { display: block; font-size: 0.95rem; margin-bottom: 2px; }
 
+    /* Weekly wrap card */
+    .ww-card { border-radius: 22px; padding: 20px 18px 18px; margin-bottom: 4px; position: relative; overflow: hidden; }
+    .ww-card.t-hyper { background: linear-gradient(135deg,#ede9fe 0%,#d1fae5 100%); border: 1.5px solid #a78bfa; }
+    .ww-card.t-crush { background: linear-gradient(135deg,#fef3c7 0%,#ede9fe 100%); border: 1.5px solid #fbbf24; }
+    .ww-card.t-solid { background: linear-gradient(135deg,#d1fae5 0%,#e0f2fe 100%); border: 1.5px solid #34d399; }
+    .ww-card.t-track { background: linear-gradient(135deg,#e0f2fe 0%,#f0f9ff 100%); border: 1.5px solid #60a5fa; }
+    .ww-card.t-build { background: linear-gradient(135deg,#fefce8 0%,#fff7ed 100%); border: 1.5px solid #fde047; }
+    .ww-card.t-tough { background: linear-gradient(135deg,#fef2f2 0%,#fff7ed 100%); border: 1.5px solid #fca5a5; }
+    .ww-card.t-reset { background: linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%); border: 1.5px solid #cbd5e1; }
+    .ww-week-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.12em; color: #64748b; margin-bottom: 10px; }
+    .ww-headline { font-size: 1.5rem; font-weight: 800; line-height: 1.1; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+    .ww-sub { font-size: 0.83rem; color: #475569; margin-bottom: 16px; font-style: italic; }
+    .ww-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+    .ww-stat { background: rgba(255,255,255,0.7); border-radius: 14px; padding: 10px 6px; text-align: center; }
+    .ww-stat-val { font-size: 1.3rem; font-weight: 800; line-height: 1; color: #1e293b; }
+    .ww-stat-lbl { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; margin-top: 3px; }
+    .ww-stat-val.up   { color: #16a34a; }
+    .ww-stat-val.down { color: #dc2626; }
+    .ww-stat-val.neu  { color: #64748b; }
+    .ww-detail { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 0.78rem; color: #475569; border-top: 1px solid rgba(0,0,0,0.07); padding-top: 12px; }
+    .ww-detail-pill { background: rgba(255,255,255,0.7); border-radius: 20px; padding: 3px 10px; font-size: 0.75rem; }
+    .ww-progress-bar { height: 5px; border-radius: 99px; background: rgba(0,0,0,0.08); margin-bottom: 14px; overflow: hidden; }
+    .ww-progress-fill { height: 100%; border-radius: 99px; background: rgba(0,0,0,0.25); transition: width 0.6s ease; }
+
     /* Punishments */
     .punish-item {
       background: rgba(248,113,113,0.06); border: 1px solid rgba(248,113,113,0.25);
@@ -539,7 +563,11 @@
 <!-- ═══════════════ HISTORY TAB ═══════════════ -->
 <div id="panel-history" style="display:none">
 
-  <div id="streak-summary" style="margin-bottom:20px"></div>
+  <!-- Weekly wrap hero card -->
+  <div id="weekly-wrap" style="margin-bottom:20px"></div>
+
+  <!-- 14-day stat chips (streak / best / avg) -->
+  <div id="streak-summary" style="margin-bottom:16px"></div>
 
   <div class="section-title" style="margin-bottom:10px">Last 14 days</div>
   <div id="history-list"></div>
@@ -1422,10 +1450,10 @@
   async function loadHistory() {
     const res = await fetch("/api/history"); if (!res.ok) return;
     const data = await res.json();
+    renderWeeklySummary(data.days, data.daily_goal || 8, data.streak);
+    renderStreakSummary(data.days, data.streak);
     renderHistoryDays(data.days, data.streak);
     renderTransactions(data.transactions);
-    renderStreakSummary(data.days, data.streak);
-    renderWeeklySummary(data.days);
   }
 
   function renderStreakSummary(days, streak) {
@@ -1477,18 +1505,119 @@
     }).join("");
   }
 
-  function renderWeeklySummary(days) {
-    const banner = document.getElementById("weekly-banner");
-    const msg    = document.getElementById("weekly-msg");
-    const dayOfWeek = new Date().getDay(); // 1 = Monday
-    if (dayOfWeek !== 1) { banner.style.display = "none"; return; }
-    // last 7 days (index 1..7 = last week, 0 = today=Monday)
-    const lastWeek = days.slice(1, 8);
-    const total = lastWeek.reduce((s, d) => s + d.total, 0).toFixed(1);
-    const active = lastWeek.filter(d => d.total > 0).length;
-    const best = Math.max(...lastWeek.map(d => d.total), 0);
-    msg.innerHTML = `<strong>📊 Last week summary</strong>${total} pts earned · ${active}/7 active days · best day: ${best} pts`;
-    banner.style.display = "";
+  function renderWeeklySummary(days, dailyGoal, streak) {
+    const el = document.getElementById("weekly-wrap");
+
+    // ── Tier definitions ────────────────────────────────────────────────────
+    const TIERS = [
+      { key:"hyper", min:1.40, emoji:"🚀", title:"Hyper productive!",
+        subs:["You're absolutely on fire. Unstoppable.","Legendary week. This is peak performance.","Maximum output. You crushed every day."] },
+      { key:"crush", min:1.15, emoji:"🔥", title:"Crushing it!",
+        subs:["Peak performance mode activated.","Way ahead of target. Dialed in and delivering.","This is what focus looks like."] },
+      { key:"solid", min:0.90, emoji:"💪", title:"Solid week",
+        subs:["Consistent and focused. Rock solid.","On form and showing up every day.","Steady wins the race. Great work."] },
+      { key:"track", min:0.70, emoji:"📈", title:"On track",
+        subs:["Progress is progress. Keep the momentum.","You're doing the work. It adds up.","Push just a little harder tomorrow."] },
+      { key:"build", min:0.50, emoji:"🌱", title:"Building momentum",
+        subs:["Slow burn, but you're showing up.","Every point counts — don't stop now.","The foundation is there. Level up."] },
+      { key:"tough", min:0.25, emoji:"😔", title:"Tough week",
+        subs:["It happens. Reset and bounce back.","Not your best, but you're still here.","One good session can turn the week around."] },
+      { key:"reset", min:0,    emoji:"💡", title:"Time to bounce back",
+        subs:["One good day can change everything.","Hit refresh. You've got this.","Small actions. Big momentum."] },
+    ];
+
+    // ── Date math (Mon = start of week) ─────────────────────────────────────
+    const DAYS_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+    // days[0] = game today (newest), days[13] = oldest
+    const todayDate = new Date(days[0].date + "T12:00:00");
+    const dow = todayDate.getDay(); // 0=Sun … 6=Sat
+    const daysElapsed = (dow + 6) % 7 + 1; // days since Mon inclusive (Mon=1 … Sun=7)
+
+    const thisWeek = days.slice(0, daysElapsed);              // newest first
+    const lastWeek = days.slice(daysElapsed, daysElapsed + 7); // previous 7 days
+
+    // Week start date
+    const weekStartDate = new Date(days[daysElapsed - 1].date + "T12:00:00");
+    const weekLabel = daysElapsed >= 7
+      ? `${MONTHS_SHORT[weekStartDate.getMonth()]} ${weekStartDate.getDate()} – ${MONTHS_SHORT[todayDate.getMonth()]} ${todayDate.getDate()}`
+      : `${MONTHS_SHORT[weekStartDate.getMonth()]} ${weekStartDate.getDate()} – today`;
+
+    // ── Stats ────────────────────────────────────────────────────────────────
+    const wTotal       = thisWeek.reduce((s,d) => s + d.total, 0);
+    const wTasks       = thisWeek.reduce((s,d) => s + d.task_count, 0);
+    const wHabits      = thisWeek.reduce((s,d) => s + d.habit_count, 0);
+    const wFocuses     = thisWeek.reduce((s,d) => s + d.focus_count, 0);
+    const wActiveDays  = thisWeek.filter(d => d.total > 0 || d.task_count > 0 || d.habit_count > 0).length;
+    const wBestDay     = thisWeek.reduce((b,d) => d.total > b.total ? d : b, {total:0, date:""});
+
+    const lwTotal      = lastWeek.reduce((s,d) => s + d.total, 0);
+    const wGoal        = dailyGoal * daysElapsed; // expected pts by now
+    const ratio        = wGoal > 0 ? wTotal / wGoal : 0;
+
+    // vs last week: compare pace (wTotal vs expected pace of last week at this point)
+    const lwPace       = lwTotal * daysElapsed / 7; // last week projected to same point
+    const vsPct        = lwPace > 0 ? Math.round((wTotal - lwPace) / lwPace * 100) : null;
+
+    // ── Pick tier ────────────────────────────────────────────────────────────
+    const tier = TIERS.find(t => ratio >= t.min) || TIERS[TIERS.length - 1];
+    // Pick a flavour sub deterministically (changes daily)
+    const sub  = tier.subs[new Date(days[0].date).getDate() % tier.subs.length];
+
+    // ── Progress bar (capped at 100%) ────────────────────────────────────────
+    const barPct = Math.min(ratio * 100, 100);
+
+    // ── vs last week chip ────────────────────────────────────────────────────
+    let vsCls = "neu", vsTxt = "—";
+    if (vsPct !== null) {
+      vsCls = vsPct > 0 ? "up" : vsPct < 0 ? "down" : "neu";
+      vsTxt = vsPct > 0 ? `↑${vsPct}%` : vsPct < 0 ? `↓${Math.abs(vsPct)}%` : "Same";
+    }
+
+    // ── Best day label ───────────────────────────────────────────────────────
+    let bestDayTxt = "—";
+    if (wBestDay.date) {
+      const bd = new Date(wBestDay.date + "T12:00:00");
+      bestDayTxt = `${DAYS_SHORT[bd.getDay()]} · ${wBestDay.total.toFixed(1)} pts`;
+    }
+
+    // ── Streak badge ─────────────────────────────────────────────────────────
+    const streakBit = streak >= 3 ? `<span class="ww-detail-pill">🔥 ${streak}-day streak</span>` : "";
+
+    el.innerHTML = `
+      <div class="ww-card t-${tier.key}">
+        <div class="ww-week-label">Week of ${weekLabel}</div>
+        <div class="ww-headline">${tier.emoji} ${tier.title}</div>
+        <div class="ww-sub">${sub}</div>
+
+        <div class="ww-progress-bar">
+          <div class="ww-progress-fill" style="width:${barPct.toFixed(1)}%"></div>
+        </div>
+
+        <div class="ww-stats">
+          <div class="ww-stat">
+            <div class="ww-stat-val">${wTotal.toFixed(1)}</div>
+            <div class="ww-stat-lbl">pts this week</div>
+          </div>
+          <div class="ww-stat">
+            <div class="ww-stat-val">${wActiveDays}/${daysElapsed}</div>
+            <div class="ww-stat-lbl">active days</div>
+          </div>
+          <div class="ww-stat">
+            <div class="ww-stat-val ${vsCls}">${vsTxt}</div>
+            <div class="ww-stat-lbl">vs last week</div>
+          </div>
+        </div>
+
+        <div class="ww-detail">
+          ${wTasks   > 0 ? `<span class="ww-detail-pill">✅ ${wTasks} task${wTasks!==1?'s':''}</span>` : ""}
+          ${wHabits  > 0 ? `<span class="ww-detail-pill">🌱 ${wHabits} habit check-in${wHabits!==1?'s':''}</span>` : ""}
+          ${wFocuses > 0 ? `<span class="ww-detail-pill">🎯 ${wFocuses} focus session${wFocuses!==1?'s':''}</span>` : ""}
+          ${wBestDay.date ? `<span class="ww-detail-pill">🏆 Best: ${bestDayTxt}</span>` : ""}
+          ${streakBit}
+        </div>
+      </div>`;
   }
 
   // ── Secure Folder ──────────────────────────────────────────────────────────
