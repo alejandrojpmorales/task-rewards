@@ -1073,5 +1073,47 @@ def get_history():
     })
 
 
+@app.route("/api/habits/map")
+def habits_map():
+    if "access_token" not in session:
+        return jsonify({"error": "not_authenticated"}), 401
+
+    headers = {"Authorization": f"Bearer {session['access_token']}"}
+    habits_list, err = fetch_habits(headers)
+    if err or not habits_list:
+        habits_list = []
+
+    # Master list of habits (current ones in TickTick)
+    all_habits = [
+        {"id": h["id"], "name": h.get("name", "Habit")}
+        for h in habits_list if h.get("id")
+    ]
+    habit_ids = {h["id"] for h in all_habits}
+
+    today = date.fromisoformat(game_today())
+    num_days = 21  # 3 weeks
+
+    # Build day list oldest → newest
+    days = [(today - timedelta(days=num_days - 1 - i)).isoformat() for i in range(num_days)]
+
+    # checkins[habit_id] = list of booleans (one per day, oldest first)
+    checkins = {h["id"]: [] for h in all_habits}
+
+    for d in days:
+        state = kv_get(f"state:{d}")
+        completed_ids = set()
+        if isinstance(state, dict) and state.get("date") == d:
+            for item in state.get("habits", []):
+                completed_ids.add(item.get("id", ""))
+        for hid in habit_ids:
+            checkins[hid].append(hid in completed_ids)
+
+    return jsonify({
+        "habits": all_habits,
+        "days": days,
+        "checkins": checkins,
+    })
+
+
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)

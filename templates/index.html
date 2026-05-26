@@ -175,8 +175,27 @@
     .toast.show { opacity: 1; }
 
     .tab-bar { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 4px; margin-bottom: 20px; }
-    .tab-btn { flex: 1; padding: 8px; border-radius: 8px; border: none; background: transparent; color: var(--muted); font-size: 0.82rem; cursor: pointer; transition: background 0.15s, color 0.15s; font-weight: 500; }
+    .tab-btn { flex: 1; padding: 8px 4px; border-radius: 8px; border: none; background: transparent; color: var(--muted); font-size: 0.75rem; cursor: pointer; transition: background 0.15s, color 0.15s; font-weight: 500; }
     .tab-btn.active { background: var(--surface2); color: var(--text); }
+
+    /* Habit tracker grid */
+    .habit-grid-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); }
+    .habit-grid { border-collapse: collapse; min-width: max-content; width: 100%; }
+    .habit-grid th, .habit-grid td { padding: 4px 3px; text-align: center; vertical-align: middle; }
+    .habit-col-name { text-align: left !important; padding: 5px 10px 5px 14px !important; min-width: 110px; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: sticky; left: 0; background: var(--surface); z-index: 2; border-right: 1px solid var(--border); }
+    .habit-col-hdr { text-align: left !important; padding: 8px 10px 4px 14px !important; position: sticky; left: 0; background: var(--surface); z-index: 2; border-right: 1px solid var(--border); }
+    .habit-dot { width: 13px; height: 13px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+    .habit-dot.done { background: #22c55e; box-shadow: 0 0 4px rgba(34,197,94,0.4); }
+    .habit-dot.miss { background: transparent; border: 1.5px solid var(--border); }
+    .habit-dot.today-done { background: #22c55e; outline: 2px solid #86efac; outline-offset: 1px; }
+    .habit-dot.today-miss { background: transparent; border: 1.5px solid var(--accent); }
+    .habit-day-hdr { font-size: 0.6rem; color: var(--muted); font-weight: 600; min-width: 19px; }
+    .habit-day-hdr.is-today { color: var(--accent); font-weight: 800; }
+    .habit-day-num { font-size: 0.56rem; color: var(--muted); }
+    .habit-row:nth-child(even) .habit-col-name { background: var(--surface2); }
+    .habit-row:nth-child(even) td { background: rgba(255,255,255,0.02); }
+    .habit-row:nth-child(even) .habit-col-name { background: var(--surface2); }
+    .habit-sep { border-left: 1px dashed var(--border); }
 
     .pending-score { background: rgba(124,106,247,0.12); border: 1px solid rgba(124,106,247,0.3); color: var(--accent); border-radius: 8px; padding: 4px 10px; font-size: 0.82rem; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
     .pending-project { font-size: 0.72rem; color: var(--muted); margin-top: 3px; }
@@ -342,6 +361,7 @@
 <div class="tab-bar">
   <button class="tab-btn active" id="tab-today"    onclick="switchTab('today')">⭐ Today</button>
   <button class="tab-btn"        id="tab-tasks"    onclick="switchTab('tasks')">📋 Tasks</button>
+  <button class="tab-btn"        id="tab-habits"   onclick="switchTab('habits')">🌱 Habits</button>
   <button class="tab-btn"        id="tab-history"  onclick="switchTab('history')">📅 History</button>
   <button class="tab-btn"        id="tab-settings" onclick="switchTab('settings')">⚙️</button>
 </div>
@@ -490,6 +510,30 @@
   <div id="workload-banner" style="display:none;background:rgba(124,106,247,0.1);border:1px solid rgba(124,106,247,0.25);border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:0.88rem;color:var(--text)"></div>
   <div class="section-title" style="margin-bottom:10px" id="pending-count"></div>
   <div class="task-list" id="pending-list"></div>
+</div>
+
+<!-- ═══════════════ HABITS TAB ═══════════════ -->
+<div id="panel-habits" style="display:none">
+
+  <div class="section-header" style="margin-bottom:14px">
+    <div class="section-title">Habit tracker · last 3 weeks</div>
+    <button class="btn btn-secondary" style="font-size:0.78rem;padding:6px 12px" onclick="loadHabitsMap(true)">↻ Refresh</button>
+  </div>
+
+  <div id="habits-map-loading" style="text-align:center;color:var(--muted);padding:40px 0;font-size:0.85rem">
+    Loading habits…
+  </div>
+  <div id="habits-map-wrap" style="display:none">
+    <div class="habit-grid-wrap">
+      <table class="habit-grid" id="habits-map-table"></table>
+    </div>
+    <div style="margin-top:10px;display:flex;align-items:center;gap:16px;font-size:0.72rem;color:var(--muted);padding:0 4px">
+      <span><span class="habit-dot done" style="display:inline-block;vertical-align:middle;margin-right:4px"></span>Done</span>
+      <span><span class="habit-dot miss" style="display:inline-block;vertical-align:middle;margin-right:4px"></span>Not logged</span>
+      <span style="margin-left:auto" id="habits-total-label"></span>
+    </div>
+  </div>
+
 </div>
 
 <!-- ═══════════════ HISTORY TAB ═══════════════ -->
@@ -1092,11 +1136,12 @@
 
   // ── Tabs ───────────────────────────────────────────────────────────────────
   function switchTab(tab) {
-    ["today","tasks","history","settings"].forEach(t => {
+    ["today","tasks","habits","history","settings"].forEach(t => {
       document.getElementById(`panel-${t}`).style.display = t === tab ? "" : "none";
       document.getElementById(`tab-${t}`).classList.toggle("active", t === tab);
     });
     if (tab === "tasks")   loadPending();
+    if (tab === "habits")  loadHabitsMap();
     if (tab === "history") loadHistory();
     if (tab === "settings") { loadConfig(); loadSFStatus(); }
   }
@@ -1264,6 +1309,111 @@
         <div class="pending-score">+${t.score}</div>
       </div>`;
     }).join("");
+  }
+
+  // ── Habit tracker ──────────────────────────────────────────────────────────
+  let _habitsLoaded = false;
+
+  async function loadHabitsMap(force = false) {
+    if (_habitsLoaded && !force) return;
+    const loading = document.getElementById("habits-map-loading");
+    const wrap    = document.getElementById("habits-map-wrap");
+    const table   = document.getElementById("habits-map-table");
+    loading.style.display = "";
+    wrap.style.display = "none";
+
+    const res = await fetch("/api/habits/map");
+    if (!res.ok) { loading.textContent = "Failed to load habits."; return; }
+    const data = await res.json();
+
+    if (!data.habits || !data.habits.length) {
+      loading.textContent = "No habits found in TickTick.";
+      return;
+    }
+
+    const days    = data.days;   // YYYY-MM-DD[], oldest first
+    const todayD  = days[days.length - 1];
+    const DOW     = ["S","M","T","W","T","F","S"];
+    const MONTHS  = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+    // ── Header row: day-of-week letters ──────────────────────────────────────
+    let thead = `<thead>`;
+
+    // Month/week separator row
+    thead += `<tr><th class="habit-col-hdr"></th>`;
+    let lastMonth = null;
+    days.forEach((d, i) => {
+      const dt = new Date(d + "T12:00:00");
+      const m  = dt.getMonth();
+      const isMonday = dt.getDay() === 1;
+      if (m !== lastMonth && i === 0 || isMonday) {
+        // show month name at Monday boundaries where month changes
+      }
+      const showMonth = (m !== lastMonth);
+      lastMonth = m;
+      const isFirst7 = i === 0;
+      thead += `<th class="habit-day-hdr ${d === todayD ? 'is-today' : ''}"
+                    style="${i > 0 && new Date(d + 'T12:00:00').getDay() === 1 ? 'border-left:1px solid var(--border)' : ''}">
+                  ${showMonth ? `<span style="font-size:0.55rem;display:block;color:var(--muted)">${MONTHS[m]}</span>` : ''}
+                  ${DOW[new Date(d + "T12:00:00").getDay()]}
+                </th>`;
+    });
+    thead += `</tr>`;
+
+    // Day-number row
+    thead += `<tr><th class="habit-col-hdr" style="font-size:0.65rem;color:var(--muted);padding-bottom:6px !important">
+                <span style="font-size:0.65rem">Habit</span>
+              </th>`;
+    days.forEach((d, i) => {
+      const dayNum = parseInt(d.split("-")[2], 10);
+      thead += `<td class="habit-day-num ${d === todayD ? 'is-today' : ''}"
+                    style="${d === todayD ? 'color:var(--accent);font-weight:700' : ''}
+                           ${new Date(d+'T12:00:00').getDay()===1 && i>0 ? 'border-left:1px solid var(--border)' : ''}">
+                  ${dayNum}
+                </td>`;
+    });
+    thead += `</tr></thead>`;
+
+    // ── Body rows: one per habit ──────────────────────────────────────────────
+    let totalDone = 0, totalPossible = 0;
+    let tbody = `<tbody>`;
+    data.habits.forEach((habit, ri) => {
+      const checks = data.checkins[habit.id] || [];
+      const done   = checks.filter(Boolean).length;
+      totalDone      += done;
+      totalPossible  += days.length;
+      const pct = days.length ? Math.round(done / days.length * 100) : 0;
+
+      tbody += `<tr class="habit-row">
+        <td class="habit-col-name" title="${escHtml(habit.name)}">
+          <span style="font-size:0.78rem;font-weight:500">${escHtml(habit.name)}</span>
+          <span style="font-size:0.62rem;color:var(--muted);margin-left:4px">${pct}%</span>
+        </td>`;
+
+      checks.forEach((isDone, ci) => {
+        const d     = days[ci];
+        const isToday = d === todayD;
+        const cls   = isDone
+          ? (isToday ? "today-done" : "done")
+          : (isToday ? "today-miss" : "miss");
+        const sepStyle = new Date(d+'T12:00:00').getDay()===1 && ci>0
+          ? 'border-left:1px solid var(--border);' : '';
+        tbody += `<td style="${sepStyle}"><span class="habit-dot ${cls}"></span></td>`;
+      });
+
+      tbody += `</tr>`;
+    });
+    tbody += `</tbody>`;
+
+    table.innerHTML = thead + tbody;
+
+    const overallPct = totalPossible ? Math.round(totalDone / totalPossible * 100) : 0;
+    document.getElementById("habits-total-label").textContent =
+      `Overall: ${totalDone}/${totalPossible} (${overallPct}%)`;
+
+    loading.style.display = "none";
+    wrap.style.display    = "";
+    _habitsLoaded = true;
   }
 
   // ── History ────────────────────────────────────────────────────────────────
