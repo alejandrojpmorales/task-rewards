@@ -6,9 +6,9 @@
   <title>Task Rewards</title>
   <style>
     :root {
-      --bg: #0f0f13; --surface: #1a1a24; --surface2: #22222f; --border: #2e2e3e;
-      --accent: #7c6af7; --accent2: #5eead4; --text: #e8e8f0; --muted: #888899;
-      --gold: #f5c842; --green: #4ade80; --red: #f87171; --orange: #fb923c;
+      --bg: #f2f2f7; --surface: #ffffff; --surface2: #ebebf2; --border: #dcdcea;
+      --accent: #6c5ce7; --accent2: #00a896; --text: #17171f; --muted: #6e6e92;
+      --gold: #c49a00; --green: #16a34a; --red: #dc2626; --orange: #d4620e;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -38,10 +38,10 @@
     .login-screen p { color: var(--muted); font-size: 0.95rem; max-width: 280px; }
 
     .cards-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
-    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 18px 16px; text-align: center; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 18px 16px; text-align: center; box-shadow: 0 1px 6px rgba(0,0,0,0.07); }
     .card-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 6px; }
     .card-value { font-size: 2.4rem; font-weight: 800; line-height: 1; }
-    .card-value.earned { background: linear-gradient(135deg, #a78bfa, #5eead4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .card-value.earned { background: linear-gradient(135deg, #6c5ce7, #00a896); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
     .card-value.balance { color: var(--gold); }
     .card-sub { color: var(--muted); font-size: 0.75rem; margin-top: 4px; }
 
@@ -81,7 +81,7 @@
       display: block; width: 100%; text-align: left; background: none; border: none;
       color: var(--text); font-size: 0.85rem; padding: 8px 14px; cursor: pointer;
     }
-    .reward-picker-dropdown button:hover { background: var(--surface3, #2a2a3a); }
+    .reward-picker-dropdown button:hover { background: var(--surface2); }
     .reward-picker-dropdown button.active { color: var(--gold); }
     .reward-picker-wrap { position: relative; display: inline-block; }
 
@@ -193,8 +193,8 @@
     .habit-day-hdr.is-today { color: var(--accent); font-weight: 800; }
     .habit-day-num { font-size: 0.56rem; color: var(--muted); }
     .habit-row:nth-child(even) .habit-col-name { background: var(--surface2); }
-    .habit-row:nth-child(even) td { background: rgba(255,255,255,0.02); }
-    .habit-row:nth-child(even) .habit-col-name { background: var(--surface2); }
+    .habit-row:nth-child(even) td { background: rgba(0,0,0,0.025); }
+    .habit-row:nth-child(odd) .habit-col-name { background: var(--surface); }
     .habit-sep { border-left: 1px dashed var(--border); }
 
     .pending-score { background: rgba(124,106,247,0.12); border: 1px solid rgba(124,106,247,0.3); color: var(--accent); border-radius: 8px; padding: 4px 10px; font-size: 0.82rem; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
@@ -255,9 +255,9 @@
     .modal-actions .btn { flex: 1; text-align: center; padding: 12px; }
 
     /* Urge surfing overlay */
-    .urge-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; text-align: center; }
-    .urge-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; color: var(--accent); }
-    .urge-sub { font-size: 0.9rem; color: var(--muted); margin-bottom: 32px; max-width: 260px; line-height: 1.6; }
+    .urge-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; text-align: center; color: #fff; }
+    .urge-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; color: #a78bfa; }
+    .urge-sub { font-size: 0.9rem; color: rgba(255,255,255,0.65); margin-bottom: 32px; max-width: 260px; line-height: 1.6; }
     .urge-circle {
       width: 130px; height: 130px; border-radius: 50%;
       border: 4px solid var(--border); border-top-color: var(--accent);
@@ -266,8 +266,8 @@
       animation: urge-spin 4s linear infinite;
     }
     @keyframes urge-spin { to { transform: rotate(360deg); } }
-    .urge-timer { font-size: 2.2rem; font-weight: 800; color: var(--text); animation: none; position: absolute; }
-    .urge-cancel { font-size: 0.82rem; color: var(--muted); text-decoration: underline; cursor: pointer; margin-top: 8px; }
+    .urge-timer { font-size: 2.2rem; font-weight: 800; color: #fff; animation: none; position: absolute; }
+    .urge-cancel { font-size: 0.82rem; color: rgba(255,255,255,0.45); text-decoration: underline; cursor: pointer; margin-top: 8px; }
     .break-counter-chip { font-size: 0.72rem; background: rgba(251,146,60,0.12); border: 1px solid rgba(251,146,60,0.3); color: var(--orange); border-radius: 20px; padding: 3px 10px; }
 
     /* Mood card */
@@ -929,6 +929,7 @@
     document.getElementById("balance").textContent = currentBalance.toFixed(1);
     el.classList.add("redeemed-flash");
     setTimeout(() => el.classList.remove("redeemed-flash"), 800);
+    playRewardSound();
     showToast(`✓ Redeemed! Balance: ${currentBalance.toFixed(1)} pts`);
     renderRewards(); renderNextReward();
     updateBreakChip(data.breaks_today, data.max_breaks_per_day);
@@ -949,6 +950,7 @@
 
   async function redeem(rewardId, rewardName, cost, el) {
     if (editMode || currentBalance < cost) return;
+    playSoftClick();
     const isBreak = currentRewards.find(r => r.id === rewardId)?.unlock_minutes > 0;
     showConfirm(`Redeem reward?`, `"${rewardName}" costs ${cost} pts. Balance after: ${(currentBalance - cost).toFixed(1)} pts.`, () => {
       if (isBreak) {
@@ -1599,6 +1601,49 @@
     el.innerHTML =
       `Permission: <strong style="color:${permColor}">${perm}</strong><br>` +
       `Service Worker: <strong>${swState}</strong>`;
+  }
+
+  // ── Sounds ──────────────────────────────────────────────────────────────────
+  function _audioCtx() {
+    try { return new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return null; }
+  }
+
+  /** Soft "pop" played when a reward button is tapped */
+  function playSoftClick() {
+    const ctx = _audioCtx(); if (!ctx) return;
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.connect(g); g.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(540, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(260, ctx.currentTime + 0.055);
+    g.gain.setValueAtTime(0.12, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.055);
+    osc.start(); osc.stop(ctx.currentTime + 0.06);
+  }
+
+  /** Ascending coin arpeggio played when a reward is successfully redeemed */
+  function playRewardSound() {
+    const ctx = _audioCtx(); if (!ctx) return;
+    // A-major arpeggio: A4 → C#5 → E5 → A5
+    [440, 554.37, 659.25, 880].forEach((freq, i) => {
+      const t = ctx.currentTime + i * 0.1;
+      // Warm sine for body
+      const s = ctx.createOscillator(), sg = ctx.createGain();
+      s.type = "sine"; s.frequency.value = freq;
+      s.connect(sg); sg.connect(ctx.destination);
+      sg.gain.setValueAtTime(0, t);
+      sg.gain.linearRampToValueAtTime(0.20, t + 0.012);
+      sg.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+      s.start(t); s.stop(t + 0.46);
+      // Sparkle triangle (octave up, softer)
+      const tr = ctx.createOscillator(), tg = ctx.createGain();
+      tr.type = "triangle"; tr.frequency.value = freq * 2;
+      tr.connect(tg); tg.connect(ctx.destination);
+      tg.gain.setValueAtTime(0, t);
+      tg.gain.linearRampToValueAtTime(0.07, t + 0.010);
+      tg.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+      tr.start(t); tr.stop(t + 0.23);
+    });
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
