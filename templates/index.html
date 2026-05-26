@@ -1507,6 +1507,7 @@
 
   function renderWeeklySummary(days, dailyGoal, streak) {
     const el = document.getElementById("weekly-wrap");
+    if (!el || !days || !days.length) return;
 
     // ── Tier definitions ────────────────────────────────────────────────────
     const TIERS = [

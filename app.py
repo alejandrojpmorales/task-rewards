@@ -7,7 +7,7 @@ import string
 from datetime import date, datetime, timezone, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
-from flask import Flask, redirect, request, session, jsonify, render_template
+from flask import Flask, redirect, request, session, jsonify, render_template, make_response
 import requests
 from dotenv import load_dotenv
 
@@ -521,7 +521,9 @@ def fetch_pending_tasks(headers, scoring=None):
 
 @app.route("/")
 def index():
-    return render_template("index.html", logged_in="access_token" in session)
+    resp = make_response(render_template("index.html", logged_in="access_token" in session))
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 
 @app.route("/sw.js")
