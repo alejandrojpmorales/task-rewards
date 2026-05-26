@@ -875,7 +875,7 @@ def redeem():
 
     sf_status = None
     if wallet["secure_folder"].get("password"):
-        unlock_minutes = int(reward.get("unlock_minutes") or 0) or 30
+        unlock_minutes = int(reward.get("unlock_minutes") or 0) or 5  # default 5 min if SF enabled but no time set
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=unlock_minutes)
         wallet["secure_folder"]["active_unlock"] = {
             "expires_at": expires_at.isoformat(),
@@ -884,7 +884,7 @@ def redeem():
         sf_status = get_secure_folder_status(wallet)
 
     save_wallet(wallet)
-    unlock_minutes_out = int(reward.get("unlock_minutes") or 0) or 30
+    unlock_minutes_out = int(reward.get("unlock_minutes") or 0)
     return jsonify({
         "balance": wallet["balance"],
         "redeemed": reward["name"],

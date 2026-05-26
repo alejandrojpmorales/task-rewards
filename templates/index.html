@@ -962,12 +962,13 @@
     renderRewards(); renderNextReward();
     updateBreakChip(data.breaks_today, data.max_breaks_per_day);
 
-    // MacroDroid notification
+    // Notification on redeem — delay 1.5 s so Samsung Browser doesn't suppress
+    // it while the PWA is still in the foreground
     if (data.notif_enabled !== false) {
-      const mins = data.unlock_minutes || 30;
+      const mins = data.unlock_minutes || 0;
       const title = data.notif_title || `🎁 ${data.redeemed}`;
-      const body  = data.notif_body  || `Break started: ${mins} minutes`;
-      sendNotification(title, body);
+      const body  = data.notif_body  || (mins > 0 ? `Break started: ${mins} min` : `Reward redeemed! 🎉`);
+      setTimeout(() => sendNotification(title, body), 1500);
     }
 
     if (data.secure_folder && data.secure_folder.unlocked) {
@@ -1063,7 +1064,7 @@
       id: row.dataset.id || "",
       name: row.querySelector(".input-name").value.trim(),
       cost: parseFloat(row.querySelector(".input-cost").value) || 1,
-      unlock_minutes: parseInt(row.querySelector(".input-mins").value) || 30,
+      unlock_minutes: parseInt(row.querySelector(".input-mins").value) || 0,
       notif_enabled: row.querySelector(".input-notif-enabled")?.checked ?? true,
       notif_title:   row.querySelector(".input-notif-title")?.value.trim() || "",
       notif_body:    row.querySelector(".input-notif-body")?.value.trim()  || "",
