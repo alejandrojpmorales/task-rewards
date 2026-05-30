@@ -205,7 +205,9 @@ def load_wallet() -> dict:
         w.setdefault("secure_folder", {"password": None, "active_unlock": None})
         w.setdefault("punishments", DEFAULT_PUNISHMENTS)
         w.setdefault("last_activity_at", None)
-        w.setdefault("inactivity_punished_at", None)
+        w.setdefault("inactivity_punished_at", None)  # kept for migration compat
+        w.setdefault("inactivity_days_penalized", 0)
+        w.setdefault("inactivity_reference_balance", None)
         w.setdefault("streak", 0)
         w.setdefault("last_active_date", None)
         w.setdefault("daily_goal", 8.0)
@@ -327,27 +329,60 @@ def add_transaction(wallet: dict, type_: str, description: str, amount: float):
 # Inactivity punishment
 # ---------------------------------------------------------------------------
 
-def check_inactivity_punishment(wallet: dict, state: dict) -> bool:
-    """Wipe balance if no activity recorded in the last 24 h. Returns True if applied."""
+def check_inactivity_punishment(wallet: dict, state: dict) -> dict:
+    """Progressive inactivity penalty: −25% of balance per day without activity.
+    Day 1 = 25%, day 2 = 50%, day 3 = 75%, day 4+ = 100%.
+    Habits, tasks, and focus sessions all count as activity.
+    Returns a dict: {applied, pct, amount, days}"""
+    empty = {"applied": False, "pct": 0, "amount": 0.0, "days": 0}
+
     last_activity = wallet.get("last_activity_at")
     if not last_activity:
-        return False
+        return empty
+
+    # Any items in today's stored state = user was active today (habits count!)
     all_items = state["tasks"] + state["habits"] + state.get("focuses", [])
     if all_items:
-        return False
+        # Reset inactivity tracking if there is already stored activity
+        wallet["inactivity_days_penalized"] = 0
+        wallet["inactivity_reference_balance"] = None
+        return empty
+
     now = datetime.now(timezone.utc)
     last_dt = datetime.fromisoformat(last_activity)
-    if (now - last_dt).total_seconds() < 86400:
-        return False
-    punished_at = wallet.get("inactivity_punished_at")
-    if punished_at and datetime.fromisoformat(punished_at) > last_dt:
-        return False  # already wiped for this inactivity gap
-    wallet["balance"] = 0.0
-    wallet["credited_today"] = 0.0
-    wallet["streak"] = 0
+    hours_inactive = (now - last_dt).total_seconds() / 3600
+
+    if hours_inactive < 24:
+        return empty  # Still within the 24 h grace period
+
+    # How many complete 24 h periods have elapsed (cap at 4 = full wipe)
+    days_inactive = min(int(hours_inactive / 24), 4)
+    days_penalized = wallet.get("inactivity_days_penalized", 0)
+
+    if days_inactive <= days_penalized:
+        return empty  # Already applied for this many days
+
+    # On the first penalty day, snapshot the reference balance
+    if days_penalized == 0:
+        wallet["inactivity_reference_balance"] = wallet.get("balance", 0.0)
+        wallet["streak"] = 0  # break streak on day 1
+
+    ref = wallet.get("inactivity_reference_balance") or wallet.get("balance", 0.0)
+
+    # Cumulative penalty vs the reference balance, then subtract what's already been taken
+    old_pct = min(days_penalized * 0.25, 1.0)
+    new_pct = min(days_inactive  * 0.25, 1.0)
+    penalty_amount = round((new_pct - old_pct) * ref, 1)
+
+    wallet["balance"] = max(0.0, round(wallet.get("balance", 0.0) - penalty_amount, 1))
+    wallet["inactivity_days_penalized"] = days_inactive
     wallet["inactivity_punished_at"] = now.isoformat()
-    add_transaction(wallet, "inactivity", "24h inactivity — balance wiped 💀", 0)
-    return True
+
+    pct_label = int(new_pct * 100)
+    desc = f"Inactivity day {days_inactive}: −{pct_label}% of balance 💀"
+    add_transaction(wallet, "inactivity", desc, -penalty_amount)
+
+    return {"applied": True, "pct": pct_label, "amount": penalty_amount, "days": days_inactive}
 
 
 # ---------------------------------------------------------------------------
@@ -681,6 +716,9 @@ def get_score():
 
     if had_activity:
         wallet["last_activity_at"] = datetime.now(timezone.utc).isoformat()
+        # Coming back after inactivity: reset penalty tracking so fresh points are safe
+        wallet["inactivity_days_penalized"] = 0
+        wallet["inactivity_reference_balance"] = None
 
     # Streak daily bonus: 1 pt × streak length per day when streak >= 7
     streak_daily_bonus = 0
@@ -718,7 +756,8 @@ def get_score():
         "today_mood": wallet.get("today_mood"),
         "mood_multipliers": wallet.get("mood_multipliers", DEFAULT_MOOD_MULTIPLIERS),
         "hours_since_activity": hours_since,
-        "inactivity_punished": inactivity_punished,
+        "inactivity_punished": inactivity_punished.get("applied", False),
+        "inactivity_info": inactivity_punished,
         "errors": errors,
     })
 

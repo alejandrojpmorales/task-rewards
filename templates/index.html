@@ -396,13 +396,13 @@
 <!-- Inactivity punishment banner -->
 <div id="inactivity-banner" class="banner danger" style="display:none">
   <div class="icon">💀</div>
-  <div class="msg"><strong>All points wiped!</strong>No activity in the last 24 hours.</div>
+  <div class="msg" id="inactivity-msg"><strong>Inactivity penalty!</strong>No activity logged today.</div>
 </div>
 
 <!-- 20h inactivity warning -->
 <div id="warning-banner" class="banner warning" style="display:none">
   <div class="icon">⚠️</div>
-  <div class="msg" id="warning-msg"><strong>Inactivity warning</strong>You're close to losing all your points!</div>
+  <div class="msg" id="warning-msg"><strong>Inactivity warning</strong>You're close to losing points!</div>
 </div>
 
 <!-- Weekly summary (shown on Mondays) -->
@@ -754,7 +754,19 @@
       renderNextReward();
 
       // Inactivity banners
-      document.getElementById("inactivity-banner").style.display = data.inactivity_punished ? "" : "none";
+      if (data.inactivity_punished && data.inactivity_info) {
+        const info = data.inactivity_info;
+        const dayWord = info.days === 1 ? "day" : "days";
+        const msgEl = document.getElementById("inactivity-msg");
+        if (info.pct >= 100) {
+          msgEl.innerHTML = `<strong>💀 Balance wiped!</strong>4 days without activity — all points lost.`;
+        } else {
+          msgEl.innerHTML = `<strong>💀 −${info.pct}% penalty</strong>Day ${info.days} without activity — lost ${info.amount} pts.`;
+        }
+        document.getElementById("inactivity-banner").style.display = "";
+      } else {
+        document.getElementById("inactivity-banner").style.display = "none";
+      }
       scheduleInactivityWarning(data.hours_since_activity);
 
       if (data.errors && data.errors.length) console.warn("API errors:", data.errors);
@@ -773,7 +785,11 @@
     if (hoursSince === null || hoursSince === undefined) { warnBanner.style.display = "none"; return; }
     if (hoursSince >= 20 && hoursSince < 24) {
       const hoursLeft = (24 - hoursSince).toFixed(1);
-      warnMsg.innerHTML = `<strong>⚠️ Inactivity warning</strong>${hoursLeft}h left before all points are wiped!`;
+      warnMsg.innerHTML = `<strong>⚠️ Inactivity warning</strong>${hoursLeft}h left before −25% penalty!`;
+      warnBanner.style.display = "";
+    } else if (hoursSince >= 24 && hoursSince < 48) {
+      const hoursLeft = (48 - hoursSince).toFixed(1);
+      warnMsg.innerHTML = `<strong>⚠️ Day 1 penalty active (−25%)</strong>${hoursLeft}h until next −25% hit.`;
       warnBanner.style.display = "";
     } else {
       warnBanner.style.display = "none";
@@ -781,9 +797,9 @@
     if (hoursSince < 20) {
       const msUntilWarn = (20 - hoursSince) * 3600 * 1000;
       inactivityWarnTimeout = setTimeout(() => {
-        warnMsg.innerHTML = `<strong>⚠️ Inactivity warning</strong>4h left before all points are wiped!`;
+        warnMsg.innerHTML = `<strong>⚠️ Inactivity warning</strong>4h left before −25% penalty!`;
         warnBanner.style.display = "";
-        sendNotification("⚠️ Inactivity warning", "4 hours left before all your points are wiped!");
+        sendNotification("⚠️ Inactivity warning", "4 hours left — log a task or habit to avoid the penalty!");
       }, msUntilWarn);
     }
   }
