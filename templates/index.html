@@ -361,9 +361,9 @@
 <!-- Urge surfing overlay -->
 <div id="urge-overlay" class="urge-overlay" style="display:none">
   <div class="urge-title">⏸ Pause for a moment</div>
-  <div class="urge-sub">Take a breath. If you still want the break in 1 minute, it's yours.</div>
+  <div class="urge-sub">Take a breath. If you still want the break in 30 seconds, it's yours.</div>
   <div class="urge-circle">
-    <span class="urge-timer" id="urge-timer">60</span>
+    <span class="urge-timer" id="urge-timer">30</span>
   </div>
   <div style="font-size:0.85rem;color:var(--muted);max-width:240px;line-height:1.7" id="urge-intention"></div>
   <div class="urge-cancel" onclick="cancelUrge()" style="margin-top:24px">Cancel — I don't need the break</div>
@@ -931,7 +931,7 @@
 
   function startUrge(cb) {
     urgeCallback = cb;
-    let secs = 60;
+    let secs = 30;
     document.getElementById("urge-timer").textContent = secs;
     document.getElementById("urge-overlay").style.display = "flex";
     urgeInterval = setInterval(() => {
