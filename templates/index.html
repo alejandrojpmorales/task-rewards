@@ -1667,7 +1667,6 @@
       if (secs <= 0) {
         clearInterval(sfCountdownInterval); sfCountdownInterval = null;
         hideSFCard(); showToast("Secure Folder locked");
-        sendNotification("Reward time is over", "Your Secure Folder has been locked again.");
       } else { updateCountdownDisplay(secs); }
     }, 1000);
   }
