@@ -608,10 +608,11 @@
   <div class="section-title" style="margin-bottom:16px">Notifications</div>
   <div class="card" style="margin-bottom:24px">
     <div style="font-size:0.82rem;color:var(--muted);margin-bottom:12px">
-      Used for: inactivity warning (4h left before wipe) and Secure Folder lock alert.
+      Used for: break timers, inactivity warnings, and other reward reminders.<br>
+      If permission shows <strong>default</strong>, tap the button below to enable.
     </div>
     <div id="notif-diag" style="font-size:0.78rem;color:var(--muted);margin-bottom:14px;line-height:1.6">—</div>
-    <button class="btn btn-primary" onclick="testNotification()" style="width:100%;padding:11px;text-align:center">🔔 Send test notification</button>
+    <button class="btn btn-primary" onclick="testNotification()" style="width:100%;padding:11px;text-align:center">🔔 Enable &amp; test notifications</button>
   </div>
 
   <div class="section-title" style="margin-bottom:16px">Mood multipliers</div>
@@ -1725,14 +1726,28 @@
   }
 
   async function testNotification() {
-    // Never call requestPermission() — Samsung Browser auto-blocks it.
-    // Permission must be granted manually in browser site settings.
-    if (Notification.permission !== "granted") {
-      showToast("Enable notifications manually: browser menu → Settings → Sites → Notifications → Allow this site");
+    if (!("Notification" in window)) {
+      showToast("This browser doesn't support notifications");
+      return;
+    }
+    // Denied = only browser settings can fix it, JS cannot re-prompt.
+    if (Notification.permission === "denied") {
+      showToast("Notifications blocked. Go to browser Settings → Sites → Notifications → Allow this site");
       updateNotifDiag();
       return;
     }
-    await sendNotification("🔔 Test notification", "Notifications are working!");
+    // "default" means not yet decided — safe to prompt on an explicit user tap.
+    // IMPORTANT: do NOT move this call outside a user gesture (e.g. page load)
+    // — Samsung Browser auto-blocks the site if requestPermission() fires automatically.
+    if (Notification.permission === "default") {
+      const result = await Notification.requestPermission();
+      updateNotifDiag();
+      if (result !== "granted") {
+        showToast("Permission not granted. You can allow it in browser Settings → Sites → Notifications.");
+        return;
+      }
+    }
+    await sendNotification("🔔 Test notification", "Notifications are working! 🎉");
     showToast("Test sent — check your notification shade");
   }
 
@@ -1743,9 +1758,12 @@
     const swState = !("serviceWorker" in navigator) ? "unsupported"
       : swReg ? (swReg.active ? "active ✓" : "registered (activating…)")
       : "not registered";
-    const permColor = perm === "granted" ? "var(--accent)" : perm === "denied" ? "#f87171" : "var(--gold)";
+    const permColor = perm === "granted" ? "var(--green)" : perm === "denied" ? "#f87171" : "var(--gold)";
+    const permHint = perm === "default" ? " — tap the button above to enable"
+                   : perm === "denied"  ? " — unblock in browser Settings → Sites → Notifications"
+                   : "";
     el.innerHTML =
-      `Permission: <strong style="color:${permColor}">${perm}</strong><br>` +
+      `Permission: <strong style="color:${permColor}">${perm}</strong>${permHint}<br>` +
       `Service Worker: <strong>${swState}</strong>`;
   }
 
