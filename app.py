@@ -913,8 +913,8 @@ def redeem():
     add_transaction(wallet, "redeem", f"Redeemed: {reward['name']}", -reward["cost"])
 
     sf_status = None
-    if wallet["secure_folder"].get("password"):
-        unlock_minutes = int(reward.get("unlock_minutes") or 0) or 5  # default 5 min if SF enabled but no time set
+    if reward.get("show_password") and wallet["secure_folder"].get("password"):
+        unlock_minutes = int(reward.get("unlock_minutes") or 0) or 5
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=unlock_minutes)
         wallet["secure_folder"]["active_unlock"] = {
             "expires_at": expires_at.isoformat(),
@@ -1005,7 +1005,14 @@ def update_rewards():
         except (ValueError, TypeError):
             unlock_minutes = 0
         if name:
-            clean.append({"id": r.get("id") or str(uuid.uuid4()), "name": name, "cost": cost, "unlock_minutes": unlock_minutes})
+            clean.append({
+                "id": r.get("id") or str(uuid.uuid4()),
+                "name": name, "cost": cost, "unlock_minutes": unlock_minutes,
+                "show_password": bool(r.get("show_password", False)),
+                "notif_enabled": bool(r.get("notif_enabled", True)),
+                "notif_title": str(r.get("notif_title") or "").strip(),
+                "notif_body":  str(r.get("notif_body")  or "").strip(),
+            })
     wallet = load_wallet()
     wallet["rewards"] = clean
     save_wallet(wallet)

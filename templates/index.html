@@ -478,19 +478,19 @@
   <span id="refresh-icon">↻</span> Refresh
 </button>
 
-<!-- Secure Folder unlock reveal -->
+<!-- Special reward password reveal -->
 <div id="sf-reveal-card" class="sf-card" style="display:none">
   <div class="sf-card-header">
-    <div class="sf-card-label">🔓 Secure Folder Unlocked</div>
+    <div class="sf-card-label">🔑 Special Reward Password</div>
     <div class="sf-card-reward" id="sf-reward-name"></div>
   </div>
   <div class="sf-password-display">
     <div class="sf-password-value" id="sf-password-value">•••••</div>
-    <div class="sf-countdown">Locks in <strong id="sf-countdown-value">—</strong></div>
+    <div class="sf-countdown">Hides in <strong id="sf-countdown-value">—</strong></div>
   </div>
   <div class="sf-actions">
     <button class="btn" onclick="copySFPassword()">Copy</button>
-    <button class="btn btn-danger" onclick="lockSF()">Lock now</button>
+    <button class="btn btn-danger" onclick="lockSF()">Hide now</button>
   </div>
 </div>
 
@@ -651,13 +651,13 @@
     <button class="btn btn-primary" onclick="saveConfig()" style="width:100%;margin-top:16px;padding:11px;text-align:center">Save</button>
   </div>
 
-  <div class="section-title" style="margin-bottom:16px">Samsung Secure Folder</div>
+  <div class="section-title" style="margin-bottom:16px">Special Reward Password</div>
   <div class="sf-settings-card">
     <div style="font-size:0.82rem;color:var(--muted);margin-bottom:14px">
-      Enter your Samsung Secure Folder password here. When you redeem a reward it will be revealed on the Today tab with a countdown timer.
+      Save a password here. On rewards where you enable "Show special reward password", it will be revealed on the Today tab with a countdown timer when redeemed.
     </div>
     <div class="sf-settings-row">
-      <input id="sf-password-input" class="sf-input" type="password" placeholder="Secure Folder password" autocomplete="new-password" />
+      <input id="sf-password-input" class="sf-input" type="password" placeholder="Special reward password" autocomplete="new-password" />
     </div>
     <div class="sf-settings-row" style="margin-bottom:0">
       <button class="btn btn-primary" onclick="saveSFPassword()" style="flex:1;text-align:center;padding:11px">Save password</button>
@@ -876,19 +876,24 @@
     const list = document.getElementById("rewards-list");
     if (editMode) {
       list.innerHTML = currentRewards.map(r => {
-        const notifOn = r.notif_enabled !== false;
+        const notifOn  = r.notif_enabled !== false;
+        const showPw   = !!r.show_password;
         const notifTitle = escHtml(r.notif_title || "");
         const notifBody  = escHtml(r.notif_body  || "");
-        const mins = r.unlock_minutes || 30;
+        const mins = r.unlock_minutes || 0;
         return `
         <div class="reward-edit-row" data-id="${r.id}">
           <div class="reward-edit-main">
             <input class="input-name" value="${escHtml(r.name)}" placeholder="Reward name" />
             <input class="input-cost" type="number" min="0" step="0.5" value="${r.cost}" title="Cost (pts)" />
-            <input class="input-mins" type="number" min="1" step="1" value="${mins}" title="SF unlock (minutes)" />
+            <input class="input-mins" type="number" min="0" step="1" value="${mins}" title="Break duration (minutes, 0 = no break)" />
             <button class="btn btn-danger" style="padding:6px 10px;flex-shrink:0" onclick="removeRewardRow(this)">✕</button>
           </div>
           <div class="notif-section">
+            <label class="notif-toggle-row">
+              <input type="checkbox" class="input-show-pw" ${showPw ? "checked" : ""} />
+              Show special reward password on redeem
+            </label>
             <label class="notif-toggle-row">
               <input type="checkbox" class="input-notif-enabled" ${notifOn ? "checked" : ""} onchange="toggleNotifFields(this)" />
               Send notification on redeem
@@ -899,8 +904,8 @@
                 <input class="input-notif-title" value="${notifTitle}" placeholder="🎁 ${escHtml(r.name)}" />
               </div>
               <div>
-                <label>Notification body <span style="color:var(--muted);font-size:0.68rem">(leave blank for default: Break started: ${mins} minutes)</span></label>
-                <input class="input-notif-body" value="${notifBody}" placeholder="Break started: ${mins} minutes" />
+                <label>Notification body <span style="color:var(--muted);font-size:0.68rem">(leave blank for default)</span></label>
+                <input class="input-notif-body" value="${notifBody}" placeholder="${mins > 0 ? `Break started: ${mins} minutes` : `Reward redeemed! 🎉`}" />
               </div>
             </div>
           </div>
@@ -1058,17 +1063,21 @@
       <div class="reward-edit-main">
         <input class="input-name" placeholder="Reward name" />
         <input class="input-cost" type="number" min="0" step="0.5" value="1" title="Cost (pts)" />
-        <input class="input-mins" type="number" min="1" step="1" value="30" title="SF unlock (minutes)" />
+        <input class="input-mins" type="number" min="0" step="1" value="0" title="Break duration (minutes, 0 = no break)" />
         <button class="btn btn-danger" style="padding:6px 10px;flex-shrink:0" onclick="removeRewardRow(this)">✕</button>
       </div>
       <div class="notif-section">
+        <label class="notif-toggle-row">
+          <input type="checkbox" class="input-show-pw" />
+          Show special reward password on redeem
+        </label>
         <label class="notif-toggle-row">
           <input type="checkbox" class="input-notif-enabled" checked onchange="toggleNotifFields(this)" />
           Send notification on redeem
         </label>
         <div class="notif-fields">
           <div><label>Notification title <span style="color:var(--muted);font-size:0.68rem">(leave blank for default)</span></label><input class="input-notif-title" placeholder="🎁 Reward name" /></div>
-          <div><label>Notification body <span style="color:var(--muted);font-size:0.68rem">(leave blank for default)</span></label><input class="input-notif-body" placeholder="Break started: 30 minutes" /></div>
+          <div><label>Notification body <span style="color:var(--muted);font-size:0.68rem">(leave blank for default)</span></label><input class="input-notif-body" placeholder="Reward redeemed! 🎉" /></div>
         </div>
       </div>`;
     list.appendChild(row);
@@ -1082,6 +1091,7 @@
       name: row.querySelector(".input-name").value.trim(),
       cost: parseFloat(row.querySelector(".input-cost").value) || 1,
       unlock_minutes: parseInt(row.querySelector(".input-mins").value) || 0,
+      show_password: row.querySelector(".input-show-pw")?.checked ?? false,
       notif_enabled: row.querySelector(".input-notif-enabled")?.checked ?? true,
       notif_title:   row.querySelector(".input-notif-title")?.value.trim() || "",
       notif_body:    row.querySelector(".input-notif-body")?.value.trim()  || "",
