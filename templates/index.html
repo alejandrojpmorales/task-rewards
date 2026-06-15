@@ -282,15 +282,16 @@
     .urge-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; text-align: center; color: #fff; }
     .urge-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; color: #a78bfa; }
     .urge-sub { font-size: 0.9rem; color: rgba(255,255,255,0.65); margin-bottom: 32px; max-width: 260px; line-height: 1.6; }
-    .urge-circle {
-      width: 130px; height: 130px; border-radius: 50%;
-      border: 4px solid var(--border); border-top-color: var(--accent);
-      display: flex; align-items: center; justify-content: center;
-      margin-bottom: 28px; position: relative;
-      animation: urge-spin 4s linear infinite;
+    .breathe-orb {
+      width: 140px; height: 140px; border-radius: 50%;
+      background: radial-gradient(circle at 38% 32%, #c4b5fd, #6d28d9 60%, #3b0764);
+      box-shadow: 0 0 0 rgba(124,106,247,0);
+      transform: scale(0.38); opacity: 0.6;
+      will-change: transform, opacity;
+      margin-bottom: 32px;
     }
-    @keyframes urge-spin { to { transform: rotate(360deg); } }
-    .urge-timer { font-size: 2.2rem; font-weight: 800; color: #fff; animation: none; position: absolute; }
+    .breathe-phase { font-size: 2rem; font-weight: 800; color: #e9d5ff; letter-spacing: 0.03em; margin-bottom: 6px; }
+    .breathe-cycle { font-size: 0.82rem; color: rgba(255,255,255,0.4); margin-bottom: 28px; }
     .urge-cancel { font-size: 0.82rem; color: rgba(255,255,255,0.45); text-decoration: underline; cursor: pointer; margin-top: 8px; }
     .break-counter-chip { font-size: 0.72rem; background: rgba(251,146,60,0.12); border: 1px solid rgba(251,146,60,0.3); color: var(--orange); border-radius: 20px; padding: 3px 10px; }
 
@@ -358,13 +359,13 @@
 
 <div id="error" class="error-msg" style="display:none"></div>
 
-<!-- Urge surfing overlay -->
+<!-- Breathing overlay -->
 <div id="urge-overlay" class="urge-overlay" style="display:none">
-  <div class="urge-title">⏸ Pause for a moment</div>
-  <div class="urge-sub">Take a breath. If you still want the break in 30 seconds, it's yours.</div>
-  <div class="urge-circle">
-    <span class="urge-timer" id="urge-timer">30</span>
-  </div>
+  <div class="urge-title">⏸ Before you break...</div>
+  <div class="urge-sub">Two rounds of box breathing, then the break is yours.</div>
+  <div class="breathe-orb" id="breathe-orb"></div>
+  <div class="breathe-phase" id="breathe-phase">Inhale</div>
+  <div class="breathe-cycle" id="breathe-cycle">Breath 1 of 2</div>
   <div style="font-size:0.85rem;color:var(--muted);max-width:240px;line-height:1.7" id="urge-intention"></div>
   <div class="urge-cancel" onclick="cancelUrge()" style="margin-top:24px">Cancel — I don't need the break</div>
 </div>
@@ -933,27 +934,48 @@
   }
 
   let urgeCallback = null;
-  let urgeInterval = null;
+  let urgeTimeout  = null;
+
+  const _BREATHE_PHASES = [
+    { label: "Inhale", secs: 4, scale: "1",    opacity: "1",   eased: true  },
+    { label: "Hold",   secs: 4, scale: "1",    opacity: "1",   eased: false },
+    { label: "Exhale", secs: 4, scale: "0.38", opacity: "0.6", eased: true  },
+    { label: "Hold",   secs: 4, scale: "0.38", opacity: "0.6", eased: false },
+  ];
+  const _BREATHE_CYCLES = 2;
 
   function startUrge(cb) {
     urgeCallback = cb;
-    let secs = 30;
-    document.getElementById("urge-timer").textContent = secs;
+    const orb = document.getElementById("breathe-orb");
+    orb.style.transition = "none";
+    orb.style.transform  = "scale(0.38)";
+    orb.style.opacity    = "0.6";
     document.getElementById("urge-overlay").style.display = "flex";
-    urgeInterval = setInterval(() => {
-      secs--;
-      document.getElementById("urge-timer").textContent = secs;
-      if (secs <= 0) {
-        clearInterval(urgeInterval); urgeInterval = null;
-        document.getElementById("urge-overlay").style.display = "none";
-        if (urgeCallback) urgeCallback();
-        urgeCallback = null;
-      }
-    }, 1000);
+    urgeTimeout = setTimeout(() => _runBreathe(0, 0), 80);
+  }
+
+  function _runBreathe(phaseIdx, cyclesDone) {
+    if (cyclesDone >= _BREATHE_CYCLES) {
+      document.getElementById("urge-overlay").style.display = "none";
+      if (urgeCallback) { urgeCallback(); urgeCallback = null; }
+      return;
+    }
+    const p   = _BREATHE_PHASES[phaseIdx];
+    const orb = document.getElementById("breathe-orb");
+    document.getElementById("breathe-phase").textContent = p.label;
+    document.getElementById("breathe-cycle").textContent = `Breath ${cyclesDone + 1} of ${_BREATHE_CYCLES}`;
+    orb.style.transition = p.eased
+      ? `transform ${p.secs}s cubic-bezier(0.45,0,0.55,1), opacity ${p.secs}s ease`
+      : "none";
+    orb.style.transform = `scale(${p.scale})`;
+    orb.style.opacity   = p.opacity;
+    const nextPhase  = (phaseIdx + 1) % 4;
+    const nextCycles = phaseIdx === 3 ? cyclesDone + 1 : cyclesDone;
+    urgeTimeout = setTimeout(() => _runBreathe(nextPhase, nextCycles), p.secs * 1000);
   }
 
   function cancelUrge() {
-    clearInterval(urgeInterval); urgeInterval = null;
+    if (urgeTimeout) { clearTimeout(urgeTimeout); urgeTimeout = null; }
     document.getElementById("urge-overlay").style.display = "none";
     urgeCallback = null;
     showToast("Break cancelled — nice work 💪");
