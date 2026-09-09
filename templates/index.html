@@ -595,6 +595,13 @@
       <div class="cfg-row"><span class="cfg-label">6⏱️ Pomo tag <span class="cfg-sub">(4–6h)</span></span><input id="cfg-pomo6" type="number" min="0" step="0.1" class="cfg-input" /></div>
       <div class="cfg-row"><span class="cfg-label">8⏱️ Pomo tag <span class="cfg-sub">(6–8h)</span></span><input id="cfg-pomo8" type="number" min="0" step="0.1" class="cfg-input" /></div>
       <div class="cfg-row"><span class="cfg-label">✅ Habit check-in</span><input id="cfg-habit" type="number" min="0" step="0.1" class="cfg-input" /></div>
+      <div class="cfg-row"><span class="cfg-label">❗ Important habit check-in</span><input id="cfg-habit-important" type="number" min="0" step="0.1" class="cfg-input" /></div>
+      <div class="cfg-row">
+        <div><div class="cfg-label">🚀 Low-completion habit bonus</div><div class="cfg-sub">Give extra points to habits below the threshold</div></div>
+        <input id="cfg-habit-low-enabled" type="checkbox" />
+      </div>
+      <div class="cfg-row"><span class="cfg-label">Low-completion threshold (%)</span><input id="cfg-habit-low-threshold" type="number" min="0" max="100" step="1" class="cfg-input" /></div>
+      <div class="cfg-row"><span class="cfg-label">Extra habit points</span><input id="cfg-habit-low-bonus" type="number" min="0" step="0.1" class="cfg-input" /></div>
     </div>
     <button class="btn btn-primary" onclick="saveConfig()" style="width:100%;margin-top:16px;padding:11px;text-align:center">Save</button>
   </div>
@@ -1200,7 +1207,10 @@
     }
     list.innerHTML = items.map(t => {
       const badges = [];
-      if (t.type === "habit")       badges.push(`<span class="badge badge-habit">✅ Habit</span>`);
+      if (t.type === "habit") {
+        badges.push(`<span class="badge badge-habit">✅ Habit</span>`);
+        if (t.completion != null) badges.push(`<span class="badge badge-habit">${Math.round(t.completion)}% complete</span>`);
+      }
       else if (t.type === "focus")  badges.push(`<span class="badge badge-focus">🍅 Focus</span>`);
       else {
         if (t.priority === 5)              badges.push(`<span class="badge badge-priority">⚡ High</span>`);
@@ -1273,6 +1283,10 @@
     document.getElementById("cfg-pomo6").value         = s.tag_pomo6     ?? 1.2;
     document.getElementById("cfg-pomo8").value         = s.tag_pomo8     ?? 1.6;
     document.getElementById("cfg-habit").value         = s.habit         ?? 1.0;
+    document.getElementById("cfg-habit-important").value = s.habit_important ?? 1.5;
+    document.getElementById("cfg-habit-low-enabled").checked = data.habit_low_completion_bonus_enabled ?? false;
+    document.getElementById("cfg-habit-low-threshold").value = data.habit_low_completion_threshold ?? 15;
+    document.getElementById("cfg-habit-low-bonus").value     = data.habit_low_completion_bonus ?? 0.8;
     renderFocusScores(data.focus_names || {}, s);
     document.getElementById("cfg-goal").value          = data.daily_goal        ?? 8;
     document.getElementById("cfg-cap").value           = data.balance_cap       ?? 0;
@@ -1297,6 +1311,7 @@
       tag_pomo6:                   parseFloat(document.getElementById("cfg-pomo6").value)          || 0,
       tag_pomo8:                   parseFloat(document.getElementById("cfg-pomo8").value)          || 0,
       habit:                       parseFloat(document.getElementById("cfg-habit").value)          || 0,
+      habit_important:             parseFloat(document.getElementById("cfg-habit-important").value) || 0,
       ...collectFocusScores(),
     };
     const payload = {
@@ -1305,6 +1320,9 @@
       balance_cap:        parseFloat(document.getElementById("cfg-cap").value)        || 0,
       active_multiplier:  parseFloat(document.getElementById("cfg-multiplier").value) || 1,
       max_breaks_per_day: parseInt(document.getElementById("cfg-max-breaks").value)   || 3,
+      habit_low_completion_bonus_enabled: document.getElementById("cfg-habit-low-enabled").checked,
+      habit_low_completion_threshold: parseFloat(document.getElementById("cfg-habit-low-threshold").value) || 0,
+      habit_low_completion_bonus: parseFloat(document.getElementById("cfg-habit-low-bonus").value) || 0,
       mood_multipliers: {
         awesome:  parseFloat(document.getElementById("cfg-mood-awesome").value)  || 1.0,
         good:     parseFloat(document.getElementById("cfg-mood-good").value)     || 1.1,

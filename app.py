@@ -64,6 +64,7 @@ DEFAULT_SCORING = {
     "tag_pomo6":          1.2,
     "tag_pomo8":          1.6,
     "habit":              1.0,
+    "habit_important":    1.5,
     "focus_work":                 1.0,
     "focus_homework":             1.2,
     "focus_thesis":               2.0,
@@ -75,6 +76,9 @@ DEFAULT_SCORING = {
     "focus_cooking":              0.3,
     "focus_class":                0.2,
 }
+
+DEFAULT_HABIT_LOW_COMPLETION_THRESHOLD = 15.0
+DEFAULT_HABIT_LOW_COMPLETION_BONUS = 0.8
 
 # Upstash Redis credentials (set in production env vars; absent = use local files)
 UPSTASH_URL   = os.environ.get("UPSTASH_REDIS_REST_URL")
@@ -171,6 +175,57 @@ def task_score(task, scoring=None):
     return round(score, 1), breakdown
 
 
+def habit_completion_percent(habit):
+    """Return TickTick's habit completion percentage when the API exposes it."""
+    for key in ("completionRate", "completionPercentage", "accomplishment", "progress"):
+        value = habit.get(key)
+        if isinstance(value, dict):
+            value = value.get("percentage", value.get("percent", value.get("value")))
+        try:
+            value = float(value)
+        except (TypeError, ValueError):
+            continue
+        if 0 <= value <= 1:
+            value *= 100
+        if 0 <= value <= 100:
+            return value
+
+    count_pairs = (
+        ("completedCount", "totalCount"),
+        ("completedCycles", "totalCycles"),
+        ("totalCheckIns", "targetDays"),
+        ("completedCheckIns", "totalCheckIns"),
+    )
+    for completed_key, total_key in count_pairs:
+        try:
+            completed = float(habit.get(completed_key))
+            total = float(habit.get(total_key))
+        except (TypeError, ValueError):
+            continue
+        if total > 0 and 0 <= completed <= total:
+            return completed / total * 100
+    return None
+
+
+def habit_score(habit, scoring, wallet):
+    is_important = "❗" in (habit.get("name") or "")
+    score_key = "habit_important" if is_important else "habit"
+    score = scoring.get(score_key, DEFAULT_SCORING[score_key])
+    breakdown = []
+    if is_important:
+        breakdown.append("❗ important habit")
+    completion = habit_completion_percent(habit)
+    threshold = wallet.get("habit_low_completion_threshold",
+                           DEFAULT_HABIT_LOW_COMPLETION_THRESHOLD)
+    bonus = wallet.get("habit_low_completion_bonus",
+                       DEFAULT_HABIT_LOW_COMPLETION_BONUS)
+    if (wallet.get("habit_low_completion_bonus_enabled", False)
+            and completion is not None and completion < threshold):
+        score += bonus
+        breakdown.append(f"low completion ({completion:.0f}%) +{bonus}")
+    return round(score, 1), breakdown, completion
+
+
 # ---------------------------------------------------------------------------
 # Daily state
 # ---------------------------------------------------------------------------
@@ -225,6 +280,9 @@ def load_wallet() -> dict:
         for mood in MOOD_ORDER:
             w["mood_multipliers"].setdefault(mood, DEFAULT_MOOD_MULTIPLIERS[mood])
         w.setdefault("streak_daily_bonus_date", None)
+        w.setdefault("habit_low_completion_bonus_enabled", False)
+        w.setdefault("habit_low_completion_threshold", DEFAULT_HABIT_LOW_COMPLETION_THRESHOLD)
+        w.setdefault("habit_low_completion_bonus", DEFAULT_HABIT_LOW_COMPLETION_BONUS)
         return w
     return {"balance": 0.0, "credited_date": "", "credited_today": 0.0,
             "rewards": DEFAULT_REWARDS, "punishments": DEFAULT_PUNISHMENTS,
@@ -237,7 +295,11 @@ def load_wallet() -> dict:
             "daily_break_date": None, "max_breaks_per_day": 3,
             "custom_focus_names": {}, "today_mood": None, "mood_date": None,
             "mood_multipliers": DEFAULT_MOOD_MULTIPLIERS.copy(),
-            "streak_daily_bonus_date": None}
+            "streak_daily_bonus_date": None,
+            "habit_low_completion_bonus_enabled": False,
+            "habit_low_completion_threshold": DEFAULT_HABIT_LOW_COMPLETION_THRESHOLD,
+            "habit_low_completion_bonus": DEFAULT_HABIT_LOW_COMPLETION_BONUS,
+            }
 
 
 def save_wallet(wallet: dict):
@@ -666,10 +728,11 @@ def get_score():
             continue
         modified_today = (habit.get("modifiedTime") or "")[:10] == today
         if modified_today and habit.get("totalCheckIns", 0) > 0:
-            habit_score = scoring.get("habit", DEFAULT_SCORING["habit"])
+            score, breakdown, completion = habit_score(habit, scoring, wallet)
             state["habits"].append({
                 "id": hid, "title": habit.get("name", "Habit"),
-                "score": habit_score, "breakdown": [], "type": "habit",
+                "score": score, "breakdown": breakdown, "type": "habit",
+                "completion": completion,
             })
             counted_habit_ids.add(hid)
 
@@ -755,6 +818,9 @@ def get_score():
         "active_multiplier": multiplier,
         "today_mood": wallet.get("today_mood"),
         "mood_multipliers": wallet.get("mood_multipliers", DEFAULT_MOOD_MULTIPLIERS),
+        "habit_low_completion_bonus_enabled": wallet.get("habit_low_completion_bonus_enabled", False),
+        "habit_low_completion_threshold": wallet.get("habit_low_completion_threshold", DEFAULT_HABIT_LOW_COMPLETION_THRESHOLD),
+        "habit_low_completion_bonus": wallet.get("habit_low_completion_bonus", DEFAULT_HABIT_LOW_COMPLETION_BONUS),
         "hours_since_activity": hours_since,
         "inactivity_punished": inactivity_punished.get("applied", False),
         "inactivity_info": inactivity_punished,
@@ -851,6 +917,26 @@ def update_config():
             mood_mults[mood] = round(max(1.0, float(incoming_mood.get(mood, default))), 2)
         except (ValueError, TypeError):
             pass
+    wallet["habit_low_completion_bonus_enabled"] = bool(
+        data.get("habit_low_completion_bonus_enabled",
+                 wallet.get("habit_low_completion_bonus_enabled", False))
+    )
+    try:
+        wallet["habit_low_completion_threshold"] = min(
+            100.0, max(0.0, float(data.get(
+                "habit_low_completion_threshold",
+                wallet.get("habit_low_completion_threshold",
+                           DEFAULT_HABIT_LOW_COMPLETION_THRESHOLD)))))
+    except (ValueError, TypeError):
+        pass
+    try:
+        wallet["habit_low_completion_bonus"] = max(
+            0.0, float(data.get(
+                "habit_low_completion_bonus",
+                wallet.get("habit_low_completion_bonus",
+                           DEFAULT_HABIT_LOW_COMPLETION_BONUS))))
+    except (ValueError, TypeError):
+        pass
     save_wallet(wallet)
     return jsonify({
         "scoring": clean,
@@ -859,6 +945,9 @@ def update_config():
         "active_multiplier": wallet["active_multiplier"],
         "max_breaks_per_day": wallet["max_breaks_per_day"],
         "mood_multipliers": wallet["mood_multipliers"],
+        "habit_low_completion_bonus_enabled": wallet["habit_low_completion_bonus_enabled"],
+        "habit_low_completion_threshold": wallet["habit_low_completion_threshold"],
+        "habit_low_completion_bonus": wallet["habit_low_completion_bonus"],
     })
 
 
