@@ -279,7 +279,7 @@
     .modal-actions .btn { flex: 1; text-align: center; padding: 12px; }
 
     /* Urge surfing overlay */
-    .urge-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; text-align: center; color: #fff; }
+    .urge-overlay { position: fixed; inset: 0; min-height: 100vh; min-height: 100dvh; background: rgba(0,0,0,0.92); z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: max(32px, env(safe-area-inset-top)) max(32px, env(safe-area-inset-right)) max(32px, env(safe-area-inset-bottom)) max(32px, env(safe-area-inset-left)); text-align: center; color: #fff; }
     .urge-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; color: #a78bfa; }
     .urge-sub { font-size: 0.9rem; color: rgba(255,255,255,0.65); margin-bottom: 32px; max-width: 260px; line-height: 1.6; }
     .breathe-orb {
@@ -952,13 +952,16 @@
   const _BREATHE_CYCLES = 2;
 
   function startUrge(cb) {
+    if (urgeTimeout) { clearTimeout(urgeTimeout); urgeTimeout = null; }
     urgeCallback = cb;
     const orb = document.getElementById("breathe-orb");
     orb.style.transition = "none";
     orb.style.transform  = "scale(0.38)";
     orb.style.opacity    = "0.6";
     document.getElementById("urge-overlay").style.display = "flex";
-    urgeTimeout = setTimeout(() => _runBreathe(0, 0), 80);
+    // Start in the same touch/click task so mobile browsers do not defer the
+    // popup while changing the viewport or suspending a newly scheduled timer.
+    _runBreathe(0, 0);
   }
 
   function _runBreathe(phaseIdx, cyclesDone) {
@@ -1767,11 +1770,20 @@
 
   async function sendNotification(title, body) {
     if (!("Notification" in window) || Notification.permission !== "granted") return;
-    const reg = swReg || (await navigator.serviceWorker.ready.catch(() => null));
-    if (reg) {
-      reg.showNotification(title, { body, icon: "/favicon.ico", badge: "/favicon.ico" });
-    } else {
-      new Notification(title, { body });
+    const reg = swReg && swReg.active
+      ? swReg
+      : ("serviceWorker" in navigator
+        ? await navigator.serviceWorker.ready.catch(() => null)
+        : null);
+    try {
+      if (reg && reg.showNotification) {
+        await reg.showNotification(title, { body, icon: "/favicon.ico", badge: "/favicon.ico" });
+      } else {
+        new Notification(title, { body });
+      }
+    } catch (error) {
+      console.warn("[Notification] failed:", error);
+      showToast("Notification failed — check this site's Android notification permission");
     }
   }
 
