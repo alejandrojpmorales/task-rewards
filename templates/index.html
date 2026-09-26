@@ -400,7 +400,7 @@
   <div class="msg" id="inactivity-msg"><strong>Inactivity penalty!</strong>No activity logged today.</div>
 </div>
 
-<!-- 20h inactivity warning -->
+<!-- Inactivity warning (four hours before the first penalty) -->
 <div id="warning-banner" class="banner warning" style="display:none">
   <div class="icon">⚠️</div>
   <div class="msg" id="warning-msg"><strong>Inactivity warning</strong>You're close to losing points!</div>
@@ -659,6 +659,24 @@
     <button class="btn btn-primary" onclick="saveConfig()" style="width:100%;margin-top:16px;padding:11px;text-align:center">Save</button>
   </div>
 
+  <div class="section-title" style="margin-bottom:16px">Inactivity penalty</div>
+  <div class="card" style="margin-bottom:24px">
+    <div style="font-size:0.82rem;color:var(--muted);margin-bottom:14px">
+      Penalties start after the grace period. The selected percentage is deducted from your balance on each penalty day until it reaches zero. Changing these settings restarts inactivity tracking.
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="cfg-row">
+        <div><div class="cfg-label">⏳ Grace period (days)</div><div class="cfg-sub">Days without activity before penalties begin</div></div>
+        <input id="cfg-inactivity-grace" type="number" min="1" max="365" step="1" class="cfg-input" />
+      </div>
+      <div class="cfg-row">
+        <div><div class="cfg-label">💀 Penalty per day (%)</div><div class="cfg-sub">Applied daily after the grace period</div></div>
+        <input id="cfg-inactivity-percent" type="number" min="1" max="100" step="1" class="cfg-input" />
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="saveConfig()" style="width:100%;margin-top:16px;padding:11px;text-align:center">Save</button>
+  </div>
+
   <div class="section-title" style="margin-bottom:16px">Special Reward Password</div>
   <div class="sf-settings-card">
     <div style="font-size:0.82rem;color:var(--muted);margin-bottom:14px">
@@ -765,18 +783,25 @@
       // Inactivity banners
       if (data.inactivity_punished && data.inactivity_info) {
         const info = data.inactivity_info;
-        const dayWord = info.days === 1 ? "day" : "days";
         const msgEl = document.getElementById("inactivity-msg");
         if (info.pct >= 100) {
-          msgEl.innerHTML = `<strong>💀 Balance wiped!</strong>4 days without activity — all points lost.`;
+          const graceDays = data.inactivity_grace_days ?? 7;
+          const penaltyPercent = data.inactivity_penalty_percent ?? 25;
+          const penaltyDaysToWipe = Math.ceil(100 / penaltyPercent);
+          const totalDays = graceDays + penaltyDaysToWipe - 1;
+          msgEl.innerHTML = `<strong>💀 Balance wiped!</strong>${totalDays} days without activity — all points lost.`;
         } else {
-          msgEl.innerHTML = `<strong>💀 −${info.pct}% penalty</strong>Day ${info.days} without activity — lost ${info.amount} pts.`;
+          msgEl.innerHTML = `<strong>💀 −${info.pct}% penalty</strong>Penalty day ${info.days} — lost ${info.amount} pts.`;
         }
         document.getElementById("inactivity-banner").style.display = "";
       } else {
         document.getElementById("inactivity-banner").style.display = "none";
       }
-      scheduleInactivityWarning(data.hours_since_activity);
+      scheduleInactivityWarning(
+        data.hours_since_activity,
+        data.inactivity_grace_days ?? 7,
+        data.inactivity_penalty_percent ?? 25
+      );
 
       if (data.errors && data.errors.length) console.warn("API errors:", data.errors);
     } catch (err) {
@@ -787,28 +812,37 @@
     }
   }
 
-  function scheduleInactivityWarning(hoursSince) {
+  function scheduleInactivityWarning(hoursSince, graceDays, penaltyPercent) {
     clearTimeout(inactivityWarnTimeout);
     const warnBanner = document.getElementById("warning-banner");
     const warnMsg    = document.getElementById("warning-msg");
     if (hoursSince === null || hoursSince === undefined) { warnBanner.style.display = "none"; return; }
-    if (hoursSince >= 20 && hoursSince < 24) {
-      const hoursLeft = (24 - hoursSince).toFixed(1);
-      warnMsg.innerHTML = `<strong>⚠️ Inactivity warning</strong>${hoursLeft}h left before −25% penalty!`;
+    const firstPenaltyHours = graceDays * 24;
+    const warningHours = firstPenaltyHours - 4;
+    const maxPenaltyDays = Math.ceil(100 / penaltyPercent);
+    if (hoursSince >= warningHours && hoursSince < firstPenaltyHours) {
+      const hoursLeft = (firstPenaltyHours - hoursSince).toFixed(1);
+      warnMsg.innerHTML = `<strong>⚠️ Inactivity warning</strong>${hoursLeft}h left before the first −${penaltyPercent}% penalty!`;
       warnBanner.style.display = "";
-    } else if (hoursSince >= 24 && hoursSince < 48) {
-      const hoursLeft = (48 - hoursSince).toFixed(1);
-      warnMsg.innerHTML = `<strong>⚠️ Day 1 penalty active (−25%)</strong>${hoursLeft}h until next −25% hit.`;
+    } else if (hoursSince >= firstPenaltyHours && hoursSince < firstPenaltyHours + maxPenaltyDays * 24) {
+      const penaltyDay = Math.floor((hoursSince - firstPenaltyHours) / 24) + 1;
+      if (penaltyDay >= maxPenaltyDays) {
+        warnBanner.style.display = "none";
+        return;
+      }
+      const nextPenalty = firstPenaltyHours + penaltyDay * 24;
+      const hoursLeft = (nextPenalty - hoursSince).toFixed(1);
+      warnMsg.innerHTML = `<strong>⚠️ Inactivity penalty day ${penaltyDay}</strong>${hoursLeft}h until the next −${penaltyPercent}% penalty.`;
       warnBanner.style.display = "";
     } else {
       warnBanner.style.display = "none";
     }
-    if (hoursSince < 20) {
-      const msUntilWarn = (20 - hoursSince) * 3600 * 1000;
+    if (hoursSince < warningHours) {
+      const msUntilWarn = (warningHours - hoursSince) * 3600 * 1000;
       inactivityWarnTimeout = setTimeout(() => {
-        warnMsg.innerHTML = `<strong>⚠️ Inactivity warning</strong>4h left before −25% penalty!`;
+        warnMsg.innerHTML = `<strong>⚠️ Inactivity warning</strong>4h left before the first −${penaltyPercent}% penalty!`;
         warnBanner.style.display = "";
-        sendNotification("⚠️ Inactivity warning", "4 hours left — log a task or habit to avoid the penalty!");
+        sendNotification("⚠️ Inactivity warning", `4 hours left before your first ${penaltyPercent}% inactivity penalty — log a task or habit to avoid it!`);
       }, msUntilWarn);
     }
   }
@@ -1295,6 +1329,8 @@
     document.getElementById("cfg-cap").value           = data.balance_cap       ?? 0;
     document.getElementById("cfg-multiplier").value    = data.active_multiplier ?? 1;
     document.getElementById("cfg-max-breaks").value    = data.max_breaks_per_day ?? 3;
+    document.getElementById("cfg-inactivity-grace").value = data.inactivity_grace_days ?? 7;
+    document.getElementById("cfg-inactivity-percent").value = data.inactivity_penalty_percent ?? 25;
     updateBreakChip(data.daily_break_count, data.max_breaks_per_day);
     const mm = data.mood_multipliers || {};
     document.getElementById("cfg-mood-awesome").value  = mm.awesome  ?? 1.0;
@@ -1323,6 +1359,8 @@
       balance_cap:        parseFloat(document.getElementById("cfg-cap").value)        || 0,
       active_multiplier:  parseFloat(document.getElementById("cfg-multiplier").value) || 1,
       max_breaks_per_day: parseInt(document.getElementById("cfg-max-breaks").value)   || 3,
+      inactivity_grace_days: parseInt(document.getElementById("cfg-inactivity-grace").value) || 7,
+      inactivity_penalty_percent: parseInt(document.getElementById("cfg-inactivity-percent").value) || 25,
       habit_low_completion_bonus_enabled: document.getElementById("cfg-habit-low-enabled").checked,
       habit_low_completion_threshold: parseFloat(document.getElementById("cfg-habit-low-threshold").value) || 0,
       habit_low_completion_bonus: parseFloat(document.getElementById("cfg-habit-low-bonus").value) || 0,

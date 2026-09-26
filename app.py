@@ -79,6 +79,8 @@ DEFAULT_SCORING = {
 
 DEFAULT_HABIT_LOW_COMPLETION_THRESHOLD = 15.0
 DEFAULT_HABIT_LOW_COMPLETION_BONUS = 0.8
+DEFAULT_INACTIVITY_GRACE_DAYS = 7
+DEFAULT_INACTIVITY_PENALTY_PERCENT = 25
 
 # Upstash Redis credentials (set in production env vars; absent = use local files)
 UPSTASH_URL   = os.environ.get("UPSTASH_REDIS_REST_URL")
@@ -263,6 +265,8 @@ def load_wallet() -> dict:
         w.setdefault("inactivity_punished_at", None)  # kept for migration compat
         w.setdefault("inactivity_days_penalized", 0)
         w.setdefault("inactivity_reference_balance", None)
+        w.setdefault("inactivity_grace_days", DEFAULT_INACTIVITY_GRACE_DAYS)
+        w.setdefault("inactivity_penalty_percent", DEFAULT_INACTIVITY_PENALTY_PERCENT)
         w.setdefault("streak", 0)
         w.setdefault("last_active_date", None)
         w.setdefault("daily_goal", 8.0)
@@ -291,6 +295,9 @@ def load_wallet() -> dict:
             "last_activity_at": None, "inactivity_punished_at": None,
             "streak": 0, "last_active_date": None, "daily_goal": 8.0,
             "balance_cap": None, "active_multiplier": 1.0, "transactions": [],
+            "inactivity_penalty_schedule": 2,
+            "inactivity_grace_days": DEFAULT_INACTIVITY_GRACE_DAYS,
+            "inactivity_penalty_percent": DEFAULT_INACTIVITY_PENALTY_PERCENT,
             "last_break_at": None, "daily_break_count": 0,
             "daily_break_date": None, "max_breaks_per_day": 3,
             "custom_focus_names": {}, "today_mood": None, "mood_date": None,
@@ -392,11 +399,17 @@ def add_transaction(wallet: dict, type_: str, description: str, amount: float):
 # ---------------------------------------------------------------------------
 
 def check_inactivity_punishment(wallet: dict, state: dict) -> dict:
-    """Progressive inactivity penalty: −25% of balance per day without activity.
-    Day 1 = 25%, day 2 = 50%, day 3 = 75%, day 4+ = 100%.
+    """Wait for the configured grace period, then progressively penalize inactivity.
     Habits, tasks, and focus sessions all count as activity.
     Returns a dict: {applied, pct, amount, days}"""
     empty = {"applied": False, "pct": 0, "amount": 0.0, "days": 0}
+
+    # Existing wallets tracked penalties on the old 24-hour schedule. Preserve
+    # any balance already removed, but start tracking future penalties anew.
+    if wallet.get("inactivity_penalty_schedule") != 2:
+        wallet["inactivity_days_penalized"] = 0
+        wallet["inactivity_reference_balance"] = None
+        wallet["inactivity_penalty_schedule"] = 2
 
     last_activity = wallet.get("last_activity_at")
     if not last_activity:
@@ -414,11 +427,17 @@ def check_inactivity_punishment(wallet: dict, state: dict) -> dict:
     last_dt = datetime.fromisoformat(last_activity)
     hours_inactive = (now - last_dt).total_seconds() / 3600
 
-    if hours_inactive < 24:
-        return empty  # Still within the 24 h grace period
+    grace_days = wallet.get("inactivity_grace_days", DEFAULT_INACTIVITY_GRACE_DAYS)
+    penalty_percent = wallet.get("inactivity_penalty_percent",
+                                  DEFAULT_INACTIVITY_PENALTY_PERCENT)
+    if hours_inactive < grace_days * 24:
+        return empty
 
-    # How many complete 24 h periods have elapsed (cap at 4 = full wipe)
-    days_inactive = min(int(hours_inactive / 24), 4)
+    # The first penalty lands at the end of the grace period, then daily.
+    days_inactive = min(
+        int(hours_inactive / 24) - grace_days + 1,
+        (100 + penalty_percent - 1) // penalty_percent,
+    )
     days_penalized = wallet.get("inactivity_days_penalized", 0)
 
     if days_inactive <= days_penalized:
@@ -432,8 +451,9 @@ def check_inactivity_punishment(wallet: dict, state: dict) -> dict:
     ref = wallet.get("inactivity_reference_balance") or wallet.get("balance", 0.0)
 
     # Cumulative penalty vs the reference balance, then subtract what's already been taken
-    old_pct = min(days_penalized * 0.25, 1.0)
-    new_pct = min(days_inactive  * 0.25, 1.0)
+    penalty_fraction = penalty_percent / 100
+    old_pct = min(days_penalized * penalty_fraction, 1.0)
+    new_pct = min(days_inactive * penalty_fraction, 1.0)
     penalty_amount = round((new_pct - old_pct) * ref, 1)
 
     wallet["balance"] = max(0.0, round(wallet.get("balance", 0.0) - penalty_amount, 1))
@@ -821,6 +841,8 @@ def get_score():
         "habit_low_completion_bonus_enabled": wallet.get("habit_low_completion_bonus_enabled", False),
         "habit_low_completion_threshold": wallet.get("habit_low_completion_threshold", DEFAULT_HABIT_LOW_COMPLETION_THRESHOLD),
         "habit_low_completion_bonus": wallet.get("habit_low_completion_bonus", DEFAULT_HABIT_LOW_COMPLETION_BONUS),
+        "inactivity_grace_days": wallet.get("inactivity_grace_days", DEFAULT_INACTIVITY_GRACE_DAYS),
+        "inactivity_penalty_percent": wallet.get("inactivity_penalty_percent", DEFAULT_INACTIVITY_PENALTY_PERCENT),
         "hours_since_activity": hours_since,
         "inactivity_punished": inactivity_punished.get("applied", False),
         "inactivity_info": inactivity_punished,
@@ -870,6 +892,8 @@ def get_config():
         "daily_break_count": wallet.get("daily_break_count", 0),
         "focus_names": all_focus_names(wallet),
         "mood_multipliers": wallet.get("mood_multipliers", DEFAULT_MOOD_MULTIPLIERS),
+        "inactivity_grace_days": wallet.get("inactivity_grace_days", DEFAULT_INACTIVITY_GRACE_DAYS),
+        "inactivity_penalty_percent": wallet.get("inactivity_penalty_percent", DEFAULT_INACTIVITY_PENALTY_PERCENT),
     })
 
 
@@ -880,6 +904,10 @@ def update_config():
     data = request.get_json() or {}
     incoming = data.get("scoring", {})
     wallet = load_wallet()
+    old_inactivity_criteria = (
+        wallet.get("inactivity_grace_days", DEFAULT_INACTIVITY_GRACE_DAYS),
+        wallet.get("inactivity_penalty_percent", DEFAULT_INACTIVITY_PENALTY_PERCENT),
+    )
     # Build clean scoring: start with all DEFAULT_SCORING keys, then add any
     # custom focus keys already known in the wallet
     clean = {}
@@ -910,6 +938,29 @@ def update_config():
         wallet["max_breaks_per_day"] = max(1, int(data.get("max_breaks_per_day", wallet.get("max_breaks_per_day", 3))))
     except (ValueError, TypeError):
         pass
+    try:
+        wallet["inactivity_grace_days"] = min(
+            365, max(1, int(data.get(
+                "inactivity_grace_days",
+                wallet.get("inactivity_grace_days", DEFAULT_INACTIVITY_GRACE_DAYS)))))
+    except (ValueError, TypeError):
+        pass
+    try:
+        wallet["inactivity_penalty_percent"] = min(
+            100, max(1, int(data.get(
+                "inactivity_penalty_percent",
+                wallet.get("inactivity_penalty_percent",
+                           DEFAULT_INACTIVITY_PENALTY_PERCENT)))))
+    except (ValueError, TypeError):
+        pass
+    if old_inactivity_criteria != (
+        wallet["inactivity_grace_days"],
+        wallet["inactivity_penalty_percent"],
+    ):
+        wallet["inactivity_days_penalized"] = 0
+        wallet["inactivity_reference_balance"] = None
+        if wallet.get("last_activity_at"):
+            wallet["last_activity_at"] = datetime.now(timezone.utc).isoformat()
     incoming_mood = data.get("mood_multipliers", {})
     mood_mults = wallet.setdefault("mood_multipliers", DEFAULT_MOOD_MULTIPLIERS.copy())
     for mood, default in DEFAULT_MOOD_MULTIPLIERS.items():
@@ -944,6 +995,8 @@ def update_config():
         "balance_cap": wallet["balance_cap"],
         "active_multiplier": wallet["active_multiplier"],
         "max_breaks_per_day": wallet["max_breaks_per_day"],
+        "inactivity_grace_days": wallet["inactivity_grace_days"],
+        "inactivity_penalty_percent": wallet["inactivity_penalty_percent"],
         "mood_multipliers": wallet["mood_multipliers"],
         "habit_low_completion_bonus_enabled": wallet["habit_low_completion_bonus_enabled"],
         "habit_low_completion_threshold": wallet["habit_low_completion_threshold"],
