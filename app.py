@@ -65,6 +65,7 @@ DEFAULT_SCORING = {
     "tag_pomo8":          1.6,
     "habit":              1.0,
     "habit_important":    1.5,
+    "forfeit_goal":       2.0,
     "focus_work":                 1.0,
     "focus_homework":             1.2,
     "focus_thesis":               2.0,
@@ -85,6 +86,11 @@ DEFAULT_INACTIVITY_PENALTY_PERCENT = 25
 # Upstash Redis credentials (set in production env vars; absent = use local files)
 UPSTASH_URL   = os.environ.get("UPSTASH_REDIS_REST_URL")
 UPSTASH_TOKEN = os.environ.get("UPSTASH_REDIS_REST_TOKEN")
+
+# Shared secret for the Forfeit bridge (Forfeit has no public API, so approved
+# goals are pushed to /api/forfeit/sync instead of being pulled)
+FORFEIT_SYNC_TOKEN = os.environ.get("FORFEIT_SYNC_TOKEN")
+FORFEIT_SYNC_MAX_DAYS_BACK = 7
 
 _DATA_DIR = Path(os.environ.get("DATA_DIR", Path(__file__).parent))
 
@@ -237,8 +243,14 @@ def load_state(today: str) -> dict:
     if isinstance(s, dict) and s.get("date") == today:
         if "focuses" not in s:
             s["focuses"] = []
+        s.setdefault("forfeits", [])
         return s
-    return {"date": today, "tasks": [], "habits": [], "focuses": []}
+    return {"date": today, "tasks": [], "habits": [], "focuses": [], "forfeits": []}
+
+
+def state_items(state: dict) -> list:
+    return (state.get("tasks", []) + state.get("habits", [])
+            + state.get("focuses", []) + state.get("forfeits", []))
 
 
 def save_state(state: dict):
@@ -278,6 +290,8 @@ def load_wallet() -> dict:
         w.setdefault("daily_break_date", None)
         w.setdefault("max_breaks_per_day", 3)
         w.setdefault("custom_focus_names", {})
+        w.setdefault("forfeit_goals", {})
+        w.setdefault("forfeit_goal_values", {})
         w.setdefault("today_mood", None)
         w.setdefault("mood_date", None)
         w.setdefault("mood_multipliers", DEFAULT_MOOD_MULTIPLIERS.copy())
@@ -301,6 +315,7 @@ def load_wallet() -> dict:
             "last_break_at": None, "daily_break_count": 0,
             "daily_break_date": None, "max_breaks_per_day": 3,
             "custom_focus_names": {}, "today_mood": None, "mood_date": None,
+            "forfeit_goals": {}, "forfeit_goal_values": {},
             "mood_multipliers": DEFAULT_MOOD_MULTIPLIERS.copy(),
             "streak_daily_bonus_date": None,
             "habit_low_completion_bonus_enabled": False,
@@ -341,6 +356,14 @@ def all_focus_names(wallet: dict) -> dict:
     for display, key in wallet.get("custom_focus_names", {}).items():
         result[key] = display
     return result
+
+
+def forfeit_goal_points(goal_id: str, wallet: dict) -> float:
+    """Per-goal value if set in Settings, otherwise the default Forfeit goal score."""
+    value = wallet.get("forfeit_goal_values", {}).get(goal_id)
+    if value is None:
+        value = wallet["scoring"].get("forfeit_goal", DEFAULT_SCORING["forfeit_goal"])
+    return value
 
 
 def credit_points(wallet: dict, today: str, today_total: float):
@@ -416,7 +439,7 @@ def check_inactivity_punishment(wallet: dict, state: dict) -> dict:
         return empty
 
     # Any items in today's stored state = user was active today (habits count!)
-    all_items = state["tasks"] + state["habits"] + state.get("focuses", [])
+    all_items = state_items(state)
     if all_items:
         # Reset inactivity tracking if there is already stored activity
         wallet["inactivity_days_penalized"] = 0
@@ -786,7 +809,7 @@ def get_score():
         if wallet.get("active_multiplier", 1.0) != 1.0:
             wallet["active_multiplier"] = 1.0
 
-    all_items = state["tasks"] + state["habits"] + state["focuses"]
+    all_items = state_items(state)
     multiplier = wallet.get("active_multiplier", 1.0)
     raw_total = round(sum(i["score"] for i in all_items), 1)
     today_total = round(raw_total * multiplier, 1)
@@ -794,7 +817,7 @@ def get_score():
     credit_points(wallet, today, today_total)
 
     # Activity = any completed task, habit, or focus (not just scored points)
-    had_activity = bool(state["tasks"] or state["habits"] or state["focuses"])
+    had_activity = bool(all_items)
     streak_bonus = update_streak(wallet, today, had_activity)
 
     if had_activity:
@@ -829,6 +852,7 @@ def get_score():
         "task_count": len(state["tasks"]),
         "habit_count": len(state["habits"]),
         "focus_count": len(state["focuses"]),
+        "forfeit_count": len(state["forfeits"]),
         "items": sorted(all_items, key=lambda i: i["score"], reverse=True),
         "balance": wallet["balance"],
         "streak": wallet.get("streak", 0),
@@ -891,6 +915,10 @@ def get_config():
         "max_breaks_per_day": wallet.get("max_breaks_per_day", 3),
         "daily_break_count": wallet.get("daily_break_count", 0),
         "focus_names": all_focus_names(wallet),
+        "forfeit_goals": [
+            {"id": gid, "name": name, "value": wallet["forfeit_goal_values"].get(gid)}
+            for gid, name in sorted(wallet["forfeit_goals"].items(), key=lambda kv: kv[1].lower())
+        ],
         "mood_multipliers": wallet.get("mood_multipliers", DEFAULT_MOOD_MULTIPLIERS),
         "inactivity_grace_days": wallet.get("inactivity_grace_days", DEFAULT_INACTIVITY_GRACE_DAYS),
         "inactivity_penalty_percent": wallet.get("inactivity_penalty_percent", DEFAULT_INACTIVITY_PENALTY_PERCENT),
@@ -961,6 +989,17 @@ def update_config():
         wallet["inactivity_reference_balance"] = None
         if wallet.get("last_activity_at"):
             wallet["last_activity_at"] = datetime.now(timezone.utc).isoformat()
+    incoming_goal_values = data.get("forfeit_goal_values")
+    if isinstance(incoming_goal_values, dict):
+        goal_values = {}
+        for gid, value in incoming_goal_values.items():
+            if gid not in wallet["forfeit_goals"] or value in (None, ""):
+                continue  # blank = use the default Forfeit goal score
+            try:
+                goal_values[gid] = round(max(0.0, float(value)), 2)
+            except (ValueError, TypeError):
+                pass
+        wallet["forfeit_goal_values"] = goal_values
     incoming_mood = data.get("mood_multipliers", {})
     mood_mults = wallet.setdefault("mood_multipliers", DEFAULT_MOOD_MULTIPLIERS.copy())
     for mood, default in DEFAULT_MOOD_MULTIPLIERS.items():
@@ -1245,16 +1284,18 @@ def get_history():
         d = (today - timedelta(days=i)).isoformat()
         state = kv_get(f"state:{d}")
         if isinstance(state, dict) and state.get("date") == d:
-            all_items = state.get("tasks", []) + state.get("habits", []) + state.get("focuses", [])
+            all_items = state_items(state)
             days.append({
                 "date": d,
                 "total": round(sum(x["score"] for x in all_items), 1),
                 "task_count":  len(state.get("tasks", [])),
                 "habit_count": len(state.get("habits", [])),
                 "focus_count": len(state.get("focuses", [])),
+                "forfeit_count": len(state.get("forfeits", [])),
             })
         else:
-            days.append({"date": d, "total": 0, "task_count": 0, "habit_count": 0, "focus_count": 0})
+            days.append({"date": d, "total": 0, "task_count": 0, "habit_count": 0,
+                         "focus_count": 0, "forfeit_count": 0})
     wallet = load_wallet()
     return jsonify({
         "days": days,
@@ -1262,6 +1303,84 @@ def get_history():
         "daily_goal": wallet.get("daily_goal", 8.0),
         "transactions": list(reversed(wallet.get("transactions", [])[:30])),
     })
+
+
+# ---------------------------------------------------------------------------
+# Forfeit sync
+# ---------------------------------------------------------------------------
+
+@app.route("/api/forfeit/sync", methods=["POST"])
+def forfeit_sync():
+    """Credit approved Forfeit goals pushed by the bridge.
+    Body: {"goals": [{"goal_id", "name", "date": "YYYY-MM-DD", "status"}]}
+    Only status "approved" earns points; each goal is credited once per date."""
+    if not FORFEIT_SYNC_TOKEN:
+        return jsonify({"error": "forfeit_sync_disabled"}), 503
+    if request.headers.get("Authorization") != f"Bearer {FORFEIT_SYNC_TOKEN}":
+        return jsonify({"error": "unauthorized"}), 401
+
+    data = request.get_json(silent=True) or {}
+    today = game_today()
+    oldest = (date.fromisoformat(today) - timedelta(days=FORFEIT_SYNC_MAX_DAYS_BACK)).isoformat()
+    wallet = load_wallet()
+    states = {}
+    credited, skipped = [], []
+
+    for g in data.get("goals", []):
+        goal_id = str(g.get("goal_id") or "").strip()
+        name = str(g.get("name") or "Forfeit goal").strip()
+        day = str(g.get("date") or today)
+        try:
+            day = date.fromisoformat(day).isoformat()
+        except ValueError:
+            skipped.append({"goal_id": goal_id, "date": day, "reason": "bad_date"})
+            continue
+        if goal_id:
+            # Every goal the bridge sends shows up in Settings, approved or not
+            wallet["forfeit_goals"][goal_id] = name
+        if not goal_id or g.get("status") != "approved":
+            skipped.append({"goal_id": goal_id, "date": day, "reason": "not_approved"})
+            continue
+        if not (oldest <= day <= today):
+            skipped.append({"goal_id": goal_id, "date": day, "reason": "out_of_range"})
+            continue
+
+        state = states.setdefault(day, load_state(day))
+        item_id = f"{goal_id}:{day}"
+        if any(f["id"] == item_id for f in state["forfeits"]):
+            skipped.append({"goal_id": goal_id, "date": day, "reason": "already_credited"})
+            continue
+        points = forfeit_goal_points(goal_id, wallet)
+        state["forfeits"].append({
+            "id": item_id, "title": name, "score": points,
+            "breakdown": [], "type": "forfeit",
+        })
+        # Today's points are credited through the daily total (mood multiplier
+        # included); past days were already closed, so credit them directly.
+        if day != today:
+            wallet["balance"] = round(wallet.get("balance", 0.0) + points, 1)
+            add_transaction(wallet, "forfeit", f"Forfeit goal ({day}): {name} 🎯", points)
+        credited.append({"goal_id": goal_id, "date": day, "name": name, "score": points})
+
+    for state in states.values():
+        save_state(state)
+
+    if today in states:
+        today_state = states[today]
+        multiplier = wallet.get("active_multiplier", 1.0) if wallet.get("mood_date") == today else 1.0
+        today_total = round(sum(i["score"] for i in state_items(today_state)) * multiplier, 1)
+        credit_points(wallet, today, today_total)
+
+    if credited:
+        wallet["last_activity_at"] = datetime.now(timezone.utc).isoformat()
+        wallet["inactivity_days_penalized"] = 0
+        wallet["inactivity_reference_balance"] = None
+        cap = wallet.get("balance_cap")
+        if cap and wallet["balance"] > cap:
+            wallet["balance"] = float(cap)
+
+    save_wallet(wallet)
+    return jsonify({"credited": credited, "skipped": skipped, "balance": wallet["balance"]})
 
 
 @app.route("/api/habits/map")
