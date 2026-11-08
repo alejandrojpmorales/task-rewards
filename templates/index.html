@@ -158,6 +158,7 @@
     .badge-pomo     { background: rgba(94,234,212,0.1); border-color: rgba(94,234,212,0.3); color: var(--accent2); }
     .badge-habit    { background: rgba(167,139,250,0.1); border-color: rgba(167,139,250,0.3); color: #a78bfa; }
     .badge-focus    { background: rgba(251,146,60,0.1);  border-color: rgba(251,146,60,0.3);  color: #fb923c; }
+    .badge-forfeit  { background: rgba(52,211,153,0.1);  border-color: rgba(52,211,153,0.3);  color: #34d399; }
     .task-score { font-size: 1.05rem; font-weight: 700; color: var(--accent); white-space: nowrap; flex-shrink: 0; }
 
     .empty-state { text-align: center; padding: 32px 20px; color: var(--muted); }
@@ -596,6 +597,7 @@
       <div class="cfg-row"><span class="cfg-label">8⏱️ Pomo tag <span class="cfg-sub">(6–8h)</span></span><input id="cfg-pomo8" type="number" min="0" step="0.1" class="cfg-input" /></div>
       <div class="cfg-row"><span class="cfg-label">✅ Habit check-in</span><input id="cfg-habit" type="number" min="0" step="0.1" class="cfg-input" /></div>
       <div class="cfg-row"><span class="cfg-label">❗ Important habit check-in</span><input id="cfg-habit-important" type="number" min="0" step="0.1" class="cfg-input" /></div>
+      <div class="cfg-row"><span class="cfg-label">🎯 Forfeit goal approved</span><input id="cfg-forfeit" type="number" min="0" step="0.1" class="cfg-input" /></div>
       <div class="cfg-row">
         <div><div class="cfg-label">🚀 Low-completion habit bonus</div><div class="cfg-sub">Give extra points to habits below the threshold</div></div>
         <input id="cfg-habit-low-enabled" type="checkbox" />
@@ -610,6 +612,13 @@
   <div class="card" style="margin-bottom:24px">
     <div class="card-label" style="text-align:left;margin-bottom:12px">Points per completed focus session — new timers appear here automatically at 0.2 pts</div>
     <div id="focus-scores-list" style="display:flex;flex-direction:column;gap:12px"></div>
+    <button class="btn btn-primary" onclick="saveConfig()" style="width:100%;margin-top:16px;padding:11px;text-align:center">Save</button>
+  </div>
+
+  <div class="section-title" style="margin-bottom:16px">Forfeit goal scores</div>
+  <div class="card" style="margin-bottom:24px">
+    <div class="card-label" style="text-align:left;margin-bottom:12px">Points per approved day — goals appear here after their first sync; leave blank to use the default Forfeit goal score</div>
+    <div id="forfeit-scores-list" style="display:flex;flex-direction:column;gap:12px"></div>
     <button class="btn btn-primary" onclick="saveConfig()" style="width:100%;margin-top:16px;padding:11px;text-align:center">Save</button>
   </div>
 
@@ -770,6 +779,7 @@
       if (data.task_count)  parts.push(`${data.task_count} task${data.task_count  !== 1 ? "s" : ""}`);
       if (data.habit_count) parts.push(`${data.habit_count} habit${data.habit_count !== 1 ? "s" : ""}`);
       if (data.focus_count) parts.push(`${data.focus_count} pomo${data.focus_count !== 1 ? "s" : ""}`);
+      if (data.forfeit_count) parts.push(`${data.forfeit_count} forfeit goal${data.forfeit_count !== 1 ? "s" : ""}`);
       document.getElementById("task-count").textContent = parts.join(" · ") || "nothing yet";
 
       document.getElementById("date-badge").textContent = new Date(data.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
@@ -1249,6 +1259,7 @@
         if (t.completion != null) badges.push(`<span class="badge badge-habit">${Math.round(t.completion)}% complete</span>`);
       }
       else if (t.type === "focus")  badges.push(`<span class="badge badge-focus">🍅 Focus</span>`);
+      else if (t.type === "forfeit") badges.push(`<span class="badge badge-forfeit">🎯 Forfeit</span>`);
       else {
         if (t.priority === 5)              badges.push(`<span class="badge badge-priority">⚡ High</span>`);
         if ((t.tags||[]).includes("🐸"))   badges.push(`<span class="badge badge-frog">🐸 Frog</span>`);
@@ -1309,6 +1320,26 @@
     return result;
   }
 
+  function renderForfeitScores(goals, defaultValue) {
+    const container = document.getElementById("forfeit-scores-list");
+    if (!goals.length) {
+      container.innerHTML = `<div class="cfg-sub">No Forfeit goals synced yet.</div>`; return;
+    }
+    container.innerHTML = goals.map(g => `<div class="cfg-row">
+        <span class="cfg-label">🎯 ${escHtml(g.name)}</span>
+        <input data-forfeit-goal="${escHtml(g.id)}" type="number" min="0" step="0.1" class="cfg-input"
+               placeholder="${defaultValue}" value="${g.value ?? ""}" />
+      </div>`).join("");
+  }
+
+  function collectForfeitScores() {
+    const result = {};
+    document.querySelectorAll("#forfeit-scores-list [data-forfeit-goal]").forEach(el => {
+      result[el.dataset.forfeitGoal] = el.value === "" ? null : (parseFloat(el.value) || 0);
+    });
+    return result;
+  }
+
   async function loadConfig() {
     const res = await fetch("/api/config"); if (!res.ok) return;
     const data = await res.json(); const s = data.scoring;
@@ -1321,10 +1352,12 @@
     document.getElementById("cfg-pomo8").value         = s.tag_pomo8     ?? 1.6;
     document.getElementById("cfg-habit").value         = s.habit         ?? 1.0;
     document.getElementById("cfg-habit-important").value = s.habit_important ?? 1.5;
+    document.getElementById("cfg-forfeit").value       = s.forfeit_goal  ?? 2.0;
     document.getElementById("cfg-habit-low-enabled").checked = data.habit_low_completion_bonus_enabled ?? false;
     document.getElementById("cfg-habit-low-threshold").value = data.habit_low_completion_threshold ?? 15;
     document.getElementById("cfg-habit-low-bonus").value     = data.habit_low_completion_bonus ?? 0.8;
     renderFocusScores(data.focus_names || {}, s);
+    renderForfeitScores(data.forfeit_goals || [], s.forfeit_goal ?? 2.0);
     document.getElementById("cfg-goal").value          = data.daily_goal        ?? 8;
     document.getElementById("cfg-cap").value           = data.balance_cap       ?? 0;
     document.getElementById("cfg-multiplier").value    = data.active_multiplier ?? 1;
@@ -1351,6 +1384,7 @@
       tag_pomo8:                   parseFloat(document.getElementById("cfg-pomo8").value)          || 0,
       habit:                       parseFloat(document.getElementById("cfg-habit").value)          || 0,
       habit_important:             parseFloat(document.getElementById("cfg-habit-important").value) || 0,
+      forfeit_goal:                parseFloat(document.getElementById("cfg-forfeit").value)        || 0,
       ...collectFocusScores(),
     };
     const payload = {
@@ -1361,6 +1395,7 @@
       max_breaks_per_day: parseInt(document.getElementById("cfg-max-breaks").value)   || 3,
       inactivity_grace_days: parseInt(document.getElementById("cfg-inactivity-grace").value) || 7,
       inactivity_penalty_percent: parseInt(document.getElementById("cfg-inactivity-percent").value) || 25,
+      forfeit_goal_values: collectForfeitScores(),
       habit_low_completion_bonus_enabled: document.getElementById("cfg-habit-low-enabled").checked,
       habit_low_completion_threshold: parseFloat(document.getElementById("cfg-habit-low-threshold").value) || 0,
       habit_low_completion_bonus: parseFloat(document.getElementById("cfg-habit-low-bonus").value) || 0,
@@ -1589,6 +1624,7 @@
       if (d.task_count)  parts.push(`${d.task_count}t`);
       if (d.habit_count) parts.push(`${d.habit_count}h`);
       if (d.focus_count) parts.push(`${d.focus_count}f`);
+      if (d.forfeit_count) parts.push(`${d.forfeit_count}g`);
       return `<div class="history-day ${isToday ? "today-row" : ""} ${d.total === 0 ? "zero-row" : ""}">
         <div class="hdate">${dateStr}${isToday ? " <span style='color:var(--accent);font-size:0.65rem'>TODAY</span>" : ""}</div>
         <div class="hbar-wrap">
